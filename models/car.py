@@ -14,4 +14,13 @@ class Car(BaseModel):
 
     def getStatus(self):
         return self.sensors.getStatus()
+    
+    def goForward(self):
+        pass
+
+    def goBackward(self):
+        pass
+    
+    def stop(self):
+        pass
 
