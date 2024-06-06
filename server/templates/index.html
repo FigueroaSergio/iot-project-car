@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebRTC Video Streaming</title>
+  </head>
+  <body>
+    <h1>WebRTC Video Streaming</h1>
+    <video id="localVideo" width="640" height="480" autoplay muted></video>
+    <video id="remoteVideo" width="640" height="480" autoplay></video>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+      const localVideo = document.getElementById("localVideo");
+      const remoteVideo = document.getElementById("remoteVideo");
+      const socket = io.connect("https://j9drrtjb-5000.euw.devtunnels.ms/");
+      const peerConnections = [];
+      let localStream;
+      const config = {
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          // {
+          //   urls: "stun:stun.relay.metered.ca:80",
+          // },
+          // {
+          //   urls: "turn:global.relay.metered.ca:80",
+          //   username: "8dd074099f122d9108cf7547",
+          //   credential: "8WuSKQ7RqzQ+jknR",
+          // },
+          // {
+          //   urls: "turn:global.relay.metered.ca:80?transport=tcp",
+          //   username: "8dd074099f122d9108cf7547",
+          //   credential: "8WuSKQ7RqzQ+jknR",
+          // },
+          // {
+          //   urls: "turn:global.relay.metered.ca:443",
+          //   username: "8dd074099f122d9108cf7547",
+          //   credential: "8WuSKQ7RqzQ+jknR",
+          // },
+          // {
+          //   urls: "turns:global.relay.metered.ca:443?transport=tcp",
+          //   username: "8dd074099f122d9108cf7547",
+          //   credential: "8WuSKQ7RqzQ+jknR",
+          // },
+        ],
+      };
+      // Access the device camera and stream to the video element
+
+      navigator.mediaDevices
+        .getUserMedia({
+          video: {
+            facingMode: "environment",
+            frameRate: { ideal: 10, max: 15 },
+            width: { ideal: 128 },
+            height: { ideal: 128 },
+          },
+        })
+        .then((stream) => {
+          localVideo.srcObject = stream;
+          localStream = stream;
+          console.log("Start broadcast");
+          socket.emit("broadcaster");
+        })
+        .catch((err) => {
+          console.error("Error accessing the camera: ", err);
+        });
+
+      const handlerAnswer = (peerConnection) => {
+        socket.on("answer", async (description) => {
+          console.log("Getting answer");
+          alert("Getting answer");
+          if (peerConnection.remoteDescription) {
+            return;
+          }
+          console.log("Process answer");
+          alert("Process answer");
+          await peerConnection.setRemoteDescription(
+            new RTCSessionDescription(description)
+          );
+        });
+      };
+      const handlerCandidate = (peerConnection) => {
+        socket.on("candidate", async (candidate) => {
+          if (!peerConnection.remoteDescription) {
+            return;
+          }
+
+          await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        });
+      };
+      const handlerDisconnect = (peerConnection) => {
+        socket.on("disconnectPeer", () => {
+          peerConnection.close();
+        });
+      };
+
+      socket.on("watcher", async (id) => {
+        console.log("New watcher", id);
+        alert(`New watcher ${id}`);
+        const peerConnection = new RTCPeerConnection(config);
+        peerConnection.addEventListener("connectionstatechange", (event) => {
+          console.log("connection: ", peerConnection.connectionState);
+        });
+        console.log(localStream);
+
+        localStream
+          .getTracks()
+          .forEach((track) => peerConnection.addTrack(track, localStream));
+
+        peerConnection.onicecandidate = (event) => {
+          if (event.candidate) {
+            socket.emit("candidate", event.candidate);
+          }
+        };
+
+        const offer = await peerConnection.createOffer();
+        // console.log(offer);
+        await peerConnection.setLocalDescription(offer);
+        console.log("Creating offer");
+        console.log(offer, id);
+        socket.emit("offer", { to: id, offer });
+
+        peerConnection.ontrack = (event) => {
+          remoteVideo.srcObject = event.streams[0];
+        };
+
+        handlerAnswer(peerConnection);
+        handlerCandidate(peerConnection);
+        handlerDisconnect(peerConnection);
+        peerConnections.push(peerConnection);
+      });
+
+      window.onunload = window.onbeforeunload = () => {
+        socket.close();
+      };
+    </script>
+  </body>
+</html>
