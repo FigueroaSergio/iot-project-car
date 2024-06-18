@@ -43,6 +43,11 @@ def broadcaster():
     print('broadcaster')
     emit('broadcaster',broadcast=True)
 
+@socketio.on('frame')
+def frame(data):
+    print('frame')
+    emit('frame',data,broadcast=True)
+
 @socketio.on('watcher')
 def watcher(id):
     print('Received watcher event')
