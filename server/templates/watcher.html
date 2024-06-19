@@ -13,9 +13,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script>
       const remoteVideo = document.getElementById("remoteVideo");
-      const socket = io.connect("https://j9drrtjb-5000.euw.devtunnels.ms/");
+      // const socket = io.connect("https://j9drrtjb-5000.euw.devtunnels.ms/");
 
-      // const socket = io.connect("http://127.0.0.1:5000/");
+      const socket = io.connect("http://127.0.0.1:5000/");
       let id = null;
       let peerConnection;
       const config = {
@@ -46,70 +46,70 @@
           // },
         ],
       };
-      // peerConnection = new RTCPeerConnection(config);
-      // peerConnection.addEventListener("connectionstatechange", (event) => {
-      //   console.log(`connection: ${peerConnection.connectionState}`);
-      //   alert(`connection: ${peerConnection.connectionState}`);
-      // });
-      // socket.on("offer", async (res) => {
-      //   console.log("Offer broadcast");
-
-      //   peerConnection.onicecandidate = (event) => {
-      //     if (event.candidate) {
-      //       socket.emit("candidate", event.candidate);
-      //     }
-      //   };
-
-      //   peerConnection.ontrack = (event) => {
-      //     console.log("track");
-      //     remoteVideo.srcObject = event.streams[0];
-      //   };
-      //   if (res.to !== id) {
-      //     return;
-      //   }
-      //   console.log("Sending answer");
-      //   await peerConnection.setRemoteDescription(
-      //     new RTCSessionDescription(res.offer)
-      //   );
-      //   const answer = await peerConnection.createAnswer();
-      //   await peerConnection.setLocalDescription(answer);
-
-      //   socket.emit("answer", answer);
-      // });
-
-      // socket.on("candidate", async (candidate) => {
-      //   console.log("candidate");
-      //   if (!peerConnection.remoteDescription) {
-      //     return;
-      //   }
-      //   await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-      // });
-
-      // socket.on("broadcaster", () => {
-      //   console.log("Broadcaster detected");
-      //   console.log("Sending watch req");
-      //   if (id) {
-      //     socket.emit("watcher", id);
-      //   }
-      // });
-
-      // socket.on("assign_id", function (data) {
-      //   console.log("Received ID:", data.id);
-      //   id = data.id;
-      //   socket.emit("watcher", id);
-      // });
-      socket.on("frame", (frame) => {
-        let previous_date = new Date();
-        const blob = new Blob([frame.buffer], { type: "image/jpeg" });
-        const url = URL.createObjectURL(blob);
-        const receivedImage = document.getElementById("receivedImage");
-        receivedImage.src = url;
-        let current_date = new Date();
-        let second_diff =
-          (current_date.getTime() - previous_date.getTime()) / 1000;
-        console.log(frame);
-        console.log("time: ", second_diff);
+      peerConnection = new RTCPeerConnection(config);
+      peerConnection.addEventListener("connectionstatechange", (event) => {
+        console.log(`connection: ${peerConnection.connectionState}`);
+        alert(`connection: ${peerConnection.connectionState}`);
       });
+      socket.on("offer", async (res) => {
+        console.log("Offer broadcast");
+
+        peerConnection.onicecandidate = (event) => {
+          if (event.candidate) {
+            socket.emit("candidate", event.candidate);
+          }
+        };
+
+        peerConnection.ontrack = (event) => {
+          console.log("track");
+          remoteVideo.srcObject = event.streams[0];
+        };
+        if (res.to !== id) {
+          return;
+        }
+        console.log("Sending answer");
+        await peerConnection.setRemoteDescription(
+          new RTCSessionDescription(res.offer)
+        );
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+
+        socket.emit("answer", answer);
+      });
+
+      socket.on("candidate", async (candidate) => {
+        console.log("candidate");
+        if (!peerConnection.remoteDescription) {
+          return;
+        }
+        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+      });
+
+      socket.on("broadcaster", () => {
+        console.log("Broadcaster detected");
+        console.log("Sending watch req");
+        if (id) {
+          socket.emit("watcher", id);
+        }
+      });
+
+      socket.on("assign_id", function (data) {
+        console.log("Received ID:", data.id);
+        id = data.id;
+        socket.emit("watcher", id);
+      });
+      // socket.on("frame", (frame) => {
+      //   let previous_date = new Date();
+      //   const blob = new Blob([frame.buffer], { type: "image/jpeg" });
+      //   const url = URL.createObjectURL(blob);
+      //   const receivedImage = document.getElementById("receivedImage");
+      //   receivedImage.src = url;
+      //   let current_date = new Date();
+      //   let second_diff =
+      //     (current_date.getTime() - previous_date.getTime()) / 1000;
+      //   console.log(frame);
+      //   console.log("time: ", second_diff);
+      // });
 
       window.onunload = window.onbeforeunload = () => {
         socket.close();

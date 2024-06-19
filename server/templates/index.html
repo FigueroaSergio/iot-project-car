@@ -15,8 +15,8 @@
     <script>
       const localVideo = document.getElementById("localVideo");
       const remoteVideo = document.getElementById("remoteVideo");
-      const socket = io.connect("https://j9drrtjb-5000.euw.devtunnels.ms/");
-      // const socket = io.connect("http://127.0.0.1:5000/");
+      // const socket = io.connect("https://j9drrtjb-5000.euw.devtunnels.ms/");
+      const socket = io.connect("http://127.0.0.1:5000/");
       const peerConnections = [];
       let localStream;
       const config = {
@@ -64,105 +64,105 @@
           console.log("Start broadcast");
           socket.emit("broadcaster");
           localVideo.play();
-          localVideo.onloadedmetadata = () => {
-            const scratchCanvas = document.getElementById("canvas");
-            console.log(localVideo.videoWidth, localVideo.videoHeight);
-            const aspectRatio = localVideo.videoWidth / localVideo.videoHeight;
-            scratchCanvas.width = localVideo.width;
-            scratchCanvas.height = localVideo.width / aspectRatio;
-            const scratchContext = scratchCanvas.getContext("2d");
-            function stillCapture(video, canvas, context) {
-              context.drawImage(video, 0, 0, canvas.width, canvas.height);
-              canvas.toBlob(async (jpeg) => {
-                /* do something useful with the Blob containing jpeg */
-                i++;
-                const start = new Date();
-                const buffer = await jpeg.arrayBuffer();
-                const end = new Date();
-                let second_diff = (end.getTime() - start.getTime()) / 1000;
-                console.log("time: ", second_diff);
-                console.log({ start, end, buffer, frame: i });
-                socket.emit("frame", { start, end, buffer, frame: i });
-              }, "image/jpeg");
-            }
-            const howOften = 1000.0 / 15;
-            setInterval(
-              stillCapture,
-              howOften,
-              localVideo,
-              scratchCanvas,
-              scratchContext
-            );
-          };
+          // localVideo.onloadedmetadata = () => {
+          //   const scratchCanvas = document.getElementById("canvas");
+          //   console.log(localVideo.videoWidth, localVideo.videoHeight);
+          //   const aspectRatio = localVideo.videoWidth / localVideo.videoHeight;
+          //   scratchCanvas.width = localVideo.width;
+          //   scratchCanvas.height = localVideo.width / aspectRatio;
+          //   const scratchContext = scratchCanvas.getContext("2d");
+          //   function stillCapture(video, canvas, context) {
+          //     context.drawImage(video, 0, 0, canvas.width, canvas.height);
+          //     canvas.toBlob(async (jpeg) => {
+          //       /* do something useful with the Blob containing jpeg */
+          //       i++;
+          //       const start = new Date();
+          //       const buffer = await jpeg.arrayBuffer();
+          //       const end = new Date();
+          //       let second_diff = (end.getTime() - start.getTime()) / 1000;
+          //       console.log("time: ", second_diff);
+          //       console.log({ start, end, buffer, frame: i });
+          //       socket.emit("frame", { start, end, buffer, frame: i });
+          //     }, "image/jpeg");
+          //   }
+          //   const howOften = 1000.0 / 15;
+          //   setInterval(
+          //     stillCapture,
+          //     howOften,
+          //     localVideo,
+          //     scratchCanvas,
+          //     scratchContext
+          //   );
+          // };
         })
         .catch((err) => {
           console.error("Error accessing the camera: ", err);
         });
 
-      // const handlerAnswer = (peerConnection) => {
-      //   socket.on("answer", async (description) => {
-      //     console.log("Getting answer");
-      //     alert("Getting answer");
-      //     if (peerConnection.remoteDescription) {
-      //       return;
-      //     }
-      //     console.log("Process answer");
-      //     alert("Process answer");
-      //     await peerConnection.setRemoteDescription(
-      //       new RTCSessionDescription(description)
-      //     );
-      //   });
-      // };
-      // const handlerCandidate = (peerConnection) => {
-      //   socket.on("candidate", async (candidate) => {
-      //     if (!peerConnection.remoteDescription) {
-      //       return;
-      //     }
+      const handlerAnswer = (peerConnection) => {
+        socket.on("answer", async (description) => {
+          console.log("Getting answer");
+          alert("Getting answer");
+          if (peerConnection.remoteDescription) {
+            return;
+          }
+          console.log("Process answer");
+          alert("Process answer");
+          await peerConnection.setRemoteDescription(
+            new RTCSessionDescription(description)
+          );
+        });
+      };
+      const handlerCandidate = (peerConnection) => {
+        socket.on("candidate", async (candidate) => {
+          if (!peerConnection.remoteDescription) {
+            return;
+          }
 
-      //     await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-      //   });
-      // };
-      // const handlerDisconnect = (peerConnection) => {
-      //   socket.on("disconnectPeer", () => {
-      //     peerConnection.close();
-      //   });
-      // };
+          await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+        });
+      };
+      const handlerDisconnect = (peerConnection) => {
+        socket.on("disconnectPeer", () => {
+          peerConnection.close();
+        });
+      };
 
-      // socket.on("watcher", async (id) => {
-      //   console.log("New watcher", id);
-      //   alert(`New watcher ${id}`);
-      //   const peerConnection = new RTCPeerConnection(config);
-      //   peerConnection.addEventListener("connectionstatechange", (event) => {
-      //     console.log("connection: ", peerConnection.connectionState);
-      //   });
-      //   console.log(localStream);
+      socket.on("watcher", async (id) => {
+        console.log("New watcher", id);
+        alert(`New watcher ${id}`);
+        const peerConnection = new RTCPeerConnection(config);
+        peerConnection.addEventListener("connectionstatechange", (event) => {
+          console.log("connection: ", peerConnection.connectionState);
+        });
+        console.log(localStream);
 
-      //   localStream
-      //     .getTracks()
-      //     .forEach((track) => peerConnection.addTrack(track, localStream));
+        localStream
+          .getTracks()
+          .forEach((track) => peerConnection.addTrack(track, localStream));
 
-      //   peerConnection.onicecandidate = (event) => {
-      //     if (event.candidate) {
-      //       socket.emit("candidate", event.candidate);
-      //     }
-      //   };
+        peerConnection.onicecandidate = (event) => {
+          if (event.candidate) {
+            socket.emit("candidate", event.candidate);
+          }
+        };
 
-      //   const offer = await peerConnection.createOffer();
-      //   // console.log(offer);
-      //   await peerConnection.setLocalDescription(offer);
-      //   console.log("Creating offer");
-      //   console.log(offer, id);
-      //   socket.emit("offer", { to: id, offer });
+        const offer = await peerConnection.createOffer();
+        // console.log(offer);
+        await peerConnection.setLocalDescription(offer);
+        console.log("Creating offer");
+        console.log(offer, id);
+        socket.emit("offer", { to: id, offer });
 
-      //   peerConnection.ontrack = (event) => {
-      //     remoteVideo.srcObject = event.streams[0];
-      //   };
+        peerConnection.ontrack = (event) => {
+          remoteVideo.srcObject = event.streams[0];
+        };
 
-      //   handlerAnswer(peerConnection);
-      //   handlerCandidate(peerConnection);
-      //   handlerDisconnect(peerConnection);
-      //   peerConnections.push(peerConnection);
-      // });
+        handlerAnswer(peerConnection);
+        handlerCandidate(peerConnection);
+        handlerDisconnect(peerConnection);
+        peerConnections.push(peerConnection);
+      });
 
       window.onunload = window.onbeforeunload = () => {
         socket.close();
