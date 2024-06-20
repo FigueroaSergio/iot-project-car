@@ -20,7 +20,8 @@
       // const socket = io.connect("https://j9drrtjb-5000.euw.devtunnels.ms/");
 
       // const socket = io.connect("http://127.0.0.1:5000/");
-      const socket = io("http://127.0.0.1:5000/");
+      // const socket = io("http://127.0.0.1:5000/");
+      const socket = io("https://" + window.location.host, { secure: true });
       let id = null;
       let peerConnection;
       const config = {

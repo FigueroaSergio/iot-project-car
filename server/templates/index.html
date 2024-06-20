@@ -20,7 +20,9 @@
       const localVideo = document.getElementById("localVideo");
       const remoteVideo = document.getElementById("remoteVideo");
       // const socket = io.connect("https://j9drrtjb-5000.euw.devtunnels.ms/");
-      const socket = io("http://127.0.0.1:5000/");
+      // const socket = io("http://127.0.0.1:5000/");
+      const socket = io("https://" + window.location.host, { secure: true });
+
       const peerConnections = [];
       let localStream;
       const config = {
@@ -94,8 +96,8 @@
           video: {
             facingMode: "environment",
             frameRate: { ideal: 10, max: 15 },
-            width: { ideal: 128 },
-            height: { ideal: 128 },
+            width: { ideal: 360 },
+            height: { ideal: 360 },
           },
         })
         .then((stream) => {
