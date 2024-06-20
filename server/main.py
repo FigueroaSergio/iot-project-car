@@ -34,18 +34,17 @@ class VideoTransformTrack(VideoStreamTrack):
 
     async def recv(self):
         frame = await self.track.recv()
-        
-        # Process the frame with OpenCV
+
+        # Convert frame to OpenCV format
         img = frame.to_ndarray(format="bgr24")
-        # cv2.imshow("Server View", img)
-        # if cv2.waitKey(1) & 0xFF == ord('q'):
-        #     pass
-        height, width, _ = img.shape
-        cv2.rectangle(img, (0, 0), (width, height), (0, 255, 0), 10)
-        # cv2.imshow("Server View", img)
-        # Convert back to video frame
-        new_frame = frame.from_ndarray(img, format="bgr24")
-        return new_frame
+
+        # Process frame (display it)
+        cv2.imshow("Server View", img)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            pass
+
+        # Return the frame unchanged
+        return frame
 
 @app.get('/', response_class=HTMLResponse)
 def index():
@@ -143,7 +142,10 @@ async def stream(id,localDescription):
         print(f"Error in stream function: {e}")
 
 if __name__ == '__main__':
-    uvicorn.run(app, host='0.0.0.0',port=5000,ssl_keyfile="./key.pem",ssl_certfile="./cert.pem",)
+    uvicorn.run(app, host='0.0.0.0',port=5000,
+                ssl_keyfile="./key.pem",
+                ssl_certfile="./cert.pem",
+                )
 
 # @socketio.on('stream')
 # def stream(localDescription):

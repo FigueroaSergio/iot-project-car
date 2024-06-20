@@ -21,7 +21,7 @@
 
       // const socket = io.connect("http://127.0.0.1:5000/");
       // const socket = io("http://127.0.0.1:5000/");
-      const socket = io("https://" + window.location.host, { secure: true });
+      const socket = io("https://" + window.location.host, { secure: false });
       let id = null;
       let peerConnection;
       const config = {
