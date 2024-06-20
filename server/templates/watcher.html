@@ -10,12 +10,17 @@
     <video id="remoteVideo" width="640" height="480" autoplay muted></video>
     <image id="receivedImage"></image>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script
+      src="https://cdn.socket.io/4.7.5/socket.io.min.js"
+      integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO"
+      crossorigin="anonymous"
+    ></script>
     <script>
       const remoteVideo = document.getElementById("remoteVideo");
       // const socket = io.connect("https://j9drrtjb-5000.euw.devtunnels.ms/");
 
-      const socket = io.connect("http://127.0.0.1:5000/");
+      // const socket = io.connect("http://127.0.0.1:5000/");
+      const socket = io("http://127.0.0.1:5000/");
       let id = null;
       let peerConnection;
       const config = {
@@ -49,10 +54,11 @@
       peerConnection = new RTCPeerConnection(config);
       peerConnection.addEventListener("connectionstatechange", (event) => {
         console.log(`connection: ${peerConnection.connectionState}`);
-        alert(`connection: ${peerConnection.connectionState}`);
+        // alert(`connection: ${peerConnection.connectionState}`);
       });
       socket.on("offer", async (res) => {
         console.log("Offer broadcast");
+        // console.log(res);
 
         peerConnection.onicecandidate = (event) => {
           if (event.candidate) {
@@ -64,15 +70,16 @@
           console.log("track");
           remoteVideo.srcObject = event.streams[0];
         };
-        if (res.to !== id) {
+        if (res.to !== socket.id) {
           return;
         }
-        console.log("Sending answer");
+        console.log("Set remote description");
         await peerConnection.setRemoteDescription(
           new RTCSessionDescription(res.offer)
         );
         const answer = await peerConnection.createAnswer();
         await peerConnection.setLocalDescription(answer);
+        console.log("Sending answer");
 
         socket.emit("answer", answer);
       });
@@ -88,15 +95,11 @@
       socket.on("broadcaster", () => {
         console.log("Broadcaster detected");
         console.log("Sending watch req");
-        if (id) {
-          socket.emit("watcher", id);
-        }
+        socket.emit("watcher");
       });
 
-      socket.on("assign_id", function (data) {
-        console.log("Received ID:", data.id);
-        id = data.id;
-        socket.emit("watcher", id);
+      socket.on("connect", function (data) {
+        console.log("Received ID:", socket.id);
       });
       // socket.on("frame", (frame) => {
       //   let previous_date = new Date();

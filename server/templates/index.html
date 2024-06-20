@@ -11,12 +11,16 @@
     <video id="localVideo" width="640" height="480" muted></video>
     <video id="remoteVideo" width="640" height="480" autoplay></video>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script
+      src="https://cdn.socket.io/4.7.5/socket.io.min.js"
+      integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO"
+      crossorigin="anonymous"
+    ></script>
     <script>
       const localVideo = document.getElementById("localVideo");
       const remoteVideo = document.getElementById("remoteVideo");
       // const socket = io.connect("https://j9drrtjb-5000.euw.devtunnels.ms/");
-      const socket = io.connect("http://127.0.0.1:5000/");
+      const socket = io("http://127.0.0.1:5000/");
       const peerConnections = [];
       let localStream;
       const config = {
@@ -49,68 +53,25 @@
       };
       // Access the device camera and stream to the video element
       let i = 0;
-      navigator.mediaDevices
-        .getUserMedia({
-          video: {
-            facingMode: "environment",
-            frameRate: { ideal: 10, max: 15 },
-            width: { ideal: 128 },
-            height: { ideal: 128 },
-          },
-        })
-        .then((stream) => {
-          localVideo.srcObject = stream;
-          localStream = stream;
-          console.log("Start broadcast");
-          socket.emit("broadcaster");
-          localVideo.play();
-          // localVideo.onloadedmetadata = () => {
-          //   const scratchCanvas = document.getElementById("canvas");
-          //   console.log(localVideo.videoWidth, localVideo.videoHeight);
-          //   const aspectRatio = localVideo.videoWidth / localVideo.videoHeight;
-          //   scratchCanvas.width = localVideo.width;
-          //   scratchCanvas.height = localVideo.width / aspectRatio;
-          //   const scratchContext = scratchCanvas.getContext("2d");
-          //   function stillCapture(video, canvas, context) {
-          //     context.drawImage(video, 0, 0, canvas.width, canvas.height);
-          //     canvas.toBlob(async (jpeg) => {
-          //       /* do something useful with the Blob containing jpeg */
-          //       i++;
-          //       const start = new Date();
-          //       const buffer = await jpeg.arrayBuffer();
-          //       const end = new Date();
-          //       let second_diff = (end.getTime() - start.getTime()) / 1000;
-          //       console.log("time: ", second_diff);
-          //       console.log({ start, end, buffer, frame: i });
-          //       socket.emit("frame", { start, end, buffer, frame: i });
-          //     }, "image/jpeg");
-          //   }
-          //   const howOften = 1000.0 / 15;
-          //   setInterval(
-          //     stillCapture,
-          //     howOften,
-          //     localVideo,
-          //     scratchCanvas,
-          //     scratchContext
-          //   );
-          // };
-        })
-        .catch((err) => {
-          console.error("Error accessing the camera: ", err);
-        });
-
-      const handlerAnswer = (peerConnection) => {
+      const handlerAnswer = (peerConnection, to) => {
         socket.on("answer", async (description) => {
-          console.log("Getting answer");
-          alert("Getting answer");
+          console.log("Getting answer", to);
+          // alert("Getting answer");
           if (peerConnection.remoteDescription) {
             return;
           }
-          console.log("Process answer");
-          alert("Process answer");
-          await peerConnection.setRemoteDescription(
-            new RTCSessionDescription(description)
-          );
+          let i = peerConnections.findIndex((p) => p === peerConnection);
+
+          // console.log("Process answer", i);
+          // alert("Process answer");
+          // console.log(description, peerConnection);
+          try {
+            await peerConnection.setRemoteDescription(
+              new RTCSessionDescription(description.answer)
+            );
+          } catch (error) {
+            console.log(error);
+          }
         });
       };
       const handlerCandidate = (peerConnection) => {
@@ -128,21 +89,103 @@
         });
       };
 
+      navigator.mediaDevices
+        .getUserMedia({
+          video: {
+            facingMode: "environment",
+            frameRate: { ideal: 10, max: 15 },
+            width: { ideal: 128 },
+            height: { ideal: 128 },
+          },
+        })
+        .then((stream) => {
+          localVideo.srcObject = stream;
+          localStream = stream;
+          console.log("Start broadcast");
+          socket.emit("broadcaster");
+          localVideo.play();
+          localVideo.onloadedmetadata = async () => {
+            console.log("Start stream server");
+            const peerConnection = new RTCPeerConnection(config);
+            peerConnection.addEventListener(
+              "connectionstatechange",
+              (event) => {
+                console.log(
+                  `connection: server`,
+                  peerConnection.connectionState
+                );
+              }
+            );
+
+            localStream
+              .getTracks()
+              .forEach((track) => peerConnection.addTrack(track, localStream));
+            peerConnection.onicecandidate = (event) => {
+              if (event.candidate) {
+                socket.emit("candidate", event.candidate);
+              }
+            };
+
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            socket.emit("stream", offer);
+            handlerAnswer(peerConnection, "server");
+            handlerCandidate(peerConnection);
+            handlerDisconnect(peerConnection);
+            peerConnections.push(peerConnection);
+            // peerConnection.ontrack = (event) => {
+            //   remoteVideo.srcObject = event.streams[0];
+            // };
+
+            //   const scratchCanvas = document.getElementById("canvas");
+            //   console.log(localVideo.videoWidth, localVideo.videoHeight);
+            //   const aspectRatio = localVideo.videoWidth / localVideo.videoHeight;
+            //   scratchCanvas.width = localVideo.width;
+            //   scratchCanvas.height = localVideo.width / aspectRatio;
+            //   const scratchContext = scratchCanvas.getContext("2d");
+            //   function stillCapture(video, canvas, context) {
+            //     context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            //     canvas.toBlob(async (jpeg) => {
+            //       /* do something useful with the Blob containing jpeg */
+            //       i++;
+            //       const start = new Date();
+            //       const buffer = await jpeg.arrayBuffer();
+            //       const end = new Date();
+            //       let second_diff = (end.getTime() - start.getTime()) / 1000;
+            //       console.log("time: ", second_diff);
+            //       console.log({ start, end, buffer, frame: i });
+            //       socket.emit("frame", { start, end, buffer, frame: i });
+            //     }, "image/jpeg");
+            //   }
+            //   const howOften = 1000.0 / 15;
+            //   setInterval(
+            //     stillCapture,
+            //     howOften,
+            //     localVideo,
+            //     scratchCanvas,
+            //     scratchContext
+            //   );
+          };
+        })
+        .catch((err) => {
+          console.error("Error accessing the camera: ", err);
+        });
+
       socket.on("watcher", async (id) => {
         console.log("New watcher", id);
-        alert(`New watcher ${id}`);
+        // alert(`New watcher ${id}`);
         const peerConnection = new RTCPeerConnection(config);
         peerConnection.addEventListener("connectionstatechange", (event) => {
-          console.log("connection: ", peerConnection.connectionState);
+          console.log(`connection: ${id}`, peerConnection.connectionState);
         });
-        console.log(localStream);
-
+        // console.log(localStream);
         localStream
           .getTracks()
           .forEach((track) => peerConnection.addTrack(track, localStream));
 
         peerConnection.onicecandidate = (event) => {
           if (event.candidate) {
+            console.log("candidate");
             socket.emit("candidate", event.candidate);
           }
         };
@@ -151,14 +194,13 @@
         // console.log(offer);
         await peerConnection.setLocalDescription(offer);
         console.log("Creating offer");
-        console.log(offer, id);
         socket.emit("offer", { to: id, offer });
 
         peerConnection.ontrack = (event) => {
           remoteVideo.srcObject = event.streams[0];
         };
 
-        handlerAnswer(peerConnection);
+        handlerAnswer(peerConnection, id);
         handlerCandidate(peerConnection);
         handlerDisconnect(peerConnection);
         peerConnections.push(peerConnection);
