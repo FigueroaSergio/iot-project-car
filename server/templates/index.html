@@ -96,8 +96,8 @@
           video: {
             facingMode: "environment",
             frameRate: { ideal: 10, max: 15 },
-            width: { ideal: 360 },
-            height: { ideal: 360 },
+            width: { ideal: 128 },
+            height: { ideal: 128 },
           },
         })
         .then((stream) => {
@@ -208,9 +208,9 @@
         peerConnections.push(peerConnection);
       });
 
-      window.onunload = window.onbeforeunload = () => {
-        socket.close();
-      };
+      // window.onunload = window.onbeforeunload = () => {
+      //   socket.disconnect();
+      // };
     </script>
   </body>
 </html>

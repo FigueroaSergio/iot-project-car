@@ -101,6 +101,7 @@
 
       socket.on("connect", function (data) {
         console.log("Received ID:", socket.id);
+        socket.emit("watcher");
       });
       // socket.on("frame", (frame) => {
       //   let previous_date = new Date();
@@ -115,9 +116,9 @@
       //   console.log("time: ", second_diff);
       // });
 
-      window.onunload = window.onbeforeunload = () => {
-        socket.close();
-      };
+      // window.onunload = window.onbeforeunload = () => {
+      //   socket.disconnect();
+      // };
     </script>
   </body>
 </html>
