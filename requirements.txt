@@ -1,2 +1,7 @@
 pydantic
 rpi.gpio
+pandas
+fastapi 
+uvicorn
+moviepy
+opencv-python
