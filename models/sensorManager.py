@@ -1,12 +1,12 @@
 from datetime import datetime
-from pydantic import BaseModel,UUID4
+from pydantic import BaseModel,UUID4,Field
 from uuid import uuid4
 from typing import List
 
-from sensor import Sensor,Measure
+from .sensor import Sensor,Measure
 
 class SensorManager(BaseModel):
-    id:UUID4=uuid4()
+    id:UUID4=Field(default_factory=lambda: uuid4())
     creation: datetime=datetime.now()
     sensors:List[Sensor]=[]
     stato:list[Measure]=[]
