@@ -7,6 +7,7 @@
   </head>
   <body>
     <h1>WebRTC Video Streaming</h1>
+    <div id="logger"></div>
     <canvas id="canvas"></canvas>
     <video id="localVideo" width="640" height="480" muted></video>
     <video id="remoteVideo" width="640" height="480" autoplay></video>
@@ -16,80 +17,23 @@
       integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO"
       crossorigin="anonymous"
     ></script>
+    <script src="index.js"></script>
     <script>
       const localVideo = document.getElementById("localVideo");
       const remoteVideo = document.getElementById("remoteVideo");
-      // const socket = io.connect("https://j9drrtjb-5000.euw.devtunnels.ms/");
-      // const socket = io("http://127.0.0.1:5000/");
-      const socket = io("https://" + window.location.host, { secure: false });
+      const loggerC = document.getElementById("logger");
+      const logger = {
+        log: (...text) => {
+          console.log(...text);
+          loggerC.innerText += `\n ${text}`;
+        },
+      };
 
-      const peerConnections = [];
-      let localStream;
-      const config = {
-        iceServers: [
-          { urls: "stun:stun.l.google.com:19302" },
-          // {
-          //   urls: "stun:stun.relay.metered.ca:80",
-          // },
-          // {
-          //   urls: "turn:global.relay.metered.ca:80",
-          //   username: "8dd074099f122d9108cf7547",
-          //   credential: "8WuSKQ7RqzQ+jknR",
-          // },
-          // {
-          //   urls: "turn:global.relay.metered.ca:80?transport=tcp",
-          //   username: "8dd074099f122d9108cf7547",
-          //   credential: "8WuSKQ7RqzQ+jknR",
-          // },
-          // {
-          //   urls: "turn:global.relay.metered.ca:443",
-          //   username: "8dd074099f122d9108cf7547",
-          //   credential: "8WuSKQ7RqzQ+jknR",
-          // },
-          // {
-          //   urls: "turns:global.relay.metered.ca:443?transport=tcp",
-          //   username: "8dd074099f122d9108cf7547",
-          //   credential: "8WuSKQ7RqzQ+jknR",
-          // },
-        ],
-      };
-      // Access the device camera and stream to the video element
-      let i = 0;
-      const handlerAnswer = (peerConnection, to) => {
-        socket.on("answer", async (description) => {
-          console.log("Getting answer", to);
-          // alert("Getting answer");
-          if (peerConnection.remoteDescription) {
-            return;
-          }
-          let i = peerConnections.findIndex((p) => p === peerConnection);
-
-          // console.log("Process answer", i);
-          // alert("Process answer");
-          // console.log(description, peerConnection);
-          try {
-            await peerConnection.setRemoteDescription(
-              new RTCSessionDescription(description.answer)
-            );
-          } catch (error) {
-            console.log(error);
-          }
-        });
-      };
-      const handlerCandidate = (peerConnection) => {
-        socket.on("candidate", async (candidate) => {
-          if (!peerConnection.remoteDescription) {
-            return;
-          }
-
-          await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-        });
-      };
-      const handlerDisconnect = (peerConnection) => {
-        socket.on("disconnectPeer", () => {
-          peerConnection.close();
-        });
-      };
+      const room = new Room("Video-streaming");
+      room.setLogger(logger);
+      socket.on("connect", (id) => {
+        room.setId(socket.id);
+      });
 
       navigator.mediaDevices
         .getUserMedia({
@@ -103,110 +47,59 @@
         .then((stream) => {
           localVideo.srcObject = stream;
           localStream = stream;
-          console.log("Start broadcast");
-          socket.emit("broadcaster");
           localVideo.play();
           localVideo.onloadedmetadata = async () => {
-            console.log("Start stream server");
-            const peerConnection = new RTCPeerConnection(config);
-            peerConnection.addEventListener(
-              "connectionstatechange",
-              (event) => {
-                console.log(
-                  `connection: server`,
-                  peerConnection.connectionState
-                );
-              }
-            );
-
-            localStream
-              .getTracks()
-              .forEach((track) => peerConnection.addTrack(track, localStream));
-            peerConnection.onicecandidate = (event) => {
-              if (event.candidate) {
-                socket.emit("candidate", event.candidate);
-              }
-            };
-
-            const offer = await peerConnection.createOffer();
-            await peerConnection.setLocalDescription(offer);
-            socket.emit("stream", offer);
-            handlerAnswer(peerConnection, "server");
-            handlerCandidate(peerConnection);
-            handlerDisconnect(peerConnection);
-            peerConnections.push(peerConnection);
-            // peerConnection.ontrack = (event) => {
-            //   remoteVideo.srcObject = event.streams[0];
-            // };
-
-            //   const scratchCanvas = document.getElementById("canvas");
-            //   console.log(localVideo.videoWidth, localVideo.videoHeight);
-            //   const aspectRatio = localVideo.videoWidth / localVideo.videoHeight;
-            //   scratchCanvas.width = localVideo.width;
-            //   scratchCanvas.height = localVideo.width / aspectRatio;
-            //   const scratchContext = scratchCanvas.getContext("2d");
-            //   function stillCapture(video, canvas, context) {
-            //     context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            //     canvas.toBlob(async (jpeg) => {
-            //       /* do something useful with the Blob containing jpeg */
-            //       i++;
-            //       const start = new Date();
-            //       const buffer = await jpeg.arrayBuffer();
-            //       const end = new Date();
-            //       let second_diff = (end.getTime() - start.getTime()) / 1000;
-            //       console.log("time: ", second_diff);
-            //       console.log({ start, end, buffer, frame: i });
-            //       socket.emit("frame", { start, end, buffer, frame: i });
-            //     }, "image/jpeg");
-            //   }
-            //   const howOften = 1000.0 / 15;
-            //   setInterval(
-            //     stillCapture,
-            //     howOften,
-            //     localVideo,
-            //     scratchCanvas,
-            //     scratchContext
-            //   );
+            room.setStream(stream);
           };
+
+          socket.on("watcher", async (id) => {
+            room.join(new User(id));
+          });
+          socket.on("answer", async ({ id, answer }) => {
+            room.answer(new User(id), answer);
+          });
+          socket.on("candidate", async ({ to, from, candidate }) => {
+            room.onCandidate(to, from, candidate);
+          });
         })
         .catch((err) => {
           console.error("Error accessing the camera: ", err);
         });
 
-      socket.on("watcher", async (id) => {
-        console.log("New watcher", id);
-        // alert(`New watcher ${id}`);
-        const peerConnection = new RTCPeerConnection(config);
-        peerConnection.addEventListener("connectionstatechange", (event) => {
-          console.log(`connection: ${id}`, peerConnection.connectionState);
-        });
-        // console.log(localStream);
-        localStream
-          .getTracks()
-          .forEach((track) => peerConnection.addTrack(track, localStream));
+      // socket.on("watcher", async (id) => {
+      //   console.log("New watcher", id);
+      //   // alert(`New watcher ${id}`);
+      //   const peerConnection = new RTCPeerConnection(config);
+      //   peerConnection.addEventListener("connectionstatechange", (event) => {
+      //     console.log(`connection: ${id}`, peerConnection.connectionState);
+      //   });
+      //   // console.log(localStream);
+      //   localStream
+      //     .getTracks()
+      //     .forEach((track) => peerConnection.addTrack(track, localStream));
 
-        peerConnection.onicecandidate = (event) => {
-          if (event.candidate) {
-            console.log("candidate");
-            socket.emit("candidate", event.candidate);
-          }
-        };
+      //   peerConnection.onicecandidate = (event) => {
+      //     if (event.candidate) {
+      //       console.log("candidate");
+      //       socket.emit("candidate", event.candidate);
+      //     }
+      //   };
 
-        const offer = await peerConnection.createOffer();
-        // console.log(offer);
-        await peerConnection.setLocalDescription(offer);
-        console.log("Creating offer");
-        socket.emit("offer", { to: id, offer });
+      //   const offer = await peerConnection.createOffer();
+      //   // console.log(offer);
+      //   await peerConnection.setLocalDescription(offer);
+      //   console.log("Creating offer");
+      //   socket.emit("offer", { to: id, offer });
 
-        peerConnection.ontrack = (event) => {
-          remoteVideo.srcObject = event.streams[0];
-        };
+      //   peerConnection.ontrack = (event) => {
+      //     remoteVideo.srcObject = event.streams[0];
+      //   };
 
-        handlerAnswer(peerConnection, id);
-        handlerCandidate(peerConnection);
-        handlerDisconnect(peerConnection);
-        peerConnections.push(peerConnection);
-      });
+      //   handlerAnswer(peerConnection, id);
+      //   handlerCandidate(peerConnection);
+      //   handlerDisconnect(peerConnection);
+      //   peerConnections.push(peerConnection);
+      // });
 
       // window.onunload = window.onbeforeunload = () => {
       //   socket.disconnect();
