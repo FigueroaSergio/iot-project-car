@@ -1,4 +1,3 @@
-import eventlet
 # eventlet.monkey_patch()
 import cv2
 import numpy as np
@@ -15,6 +14,7 @@ import asyncio
 
 import uvicorn
 from image import frame_processor
+from editor import Editor
 
 app = FastAPI(reload=True)
 
@@ -32,21 +32,28 @@ class VideoTransformTrack(VideoStreamTrack):
     def __init__(self, track):
         super().__init__()  # don't forget this!
         self.track = track
+        self.editor =None
 
     async def recv(self):
-        print('video')
         frame = await self.track.recv()
         # Convert frame to OpenCV format
         img = frame.to_ndarray(format="bgr24")
         # Process frame (display it)
-        r = frame_processor(img)
-        imS = cv2.resize(r, (360, 360))     
-        cv2.imshow("Server View", imS)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            pass
+        try:
+            if(self.editor is None):
+                self.editor = Editor(img)
+            # self.editor.setImage(img)
+
+            s =self.editor.process(img)
+            cv2.imshow('view-1',s)      
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                print('s')
+                pass
         # Introduce a delay to control the frequency
         # await asyncio.sleep(0.1)  # Adjust the delay time (in seconds) as needed
         # Return the frame unchanged
+        except Execption as e:
+            print(e)
         return frame
 
 @app.get('/', response_class=HTMLResponse)
@@ -145,6 +152,7 @@ async def stream(id,localDescription):
         print(f"Error in stream function: {e}")
 
 if __name__ == '__main__':
+    
     uvicorn.run(app, host='0.0.0.0',port=5000,
                 ssl_keyfile="./key.pem",
                 ssl_certfile="./cert.pem",
