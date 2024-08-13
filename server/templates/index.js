@@ -1,5 +1,12 @@
 const config = {
-  iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun2.l.google.com:19302" },
+    { urls: "stun:stun3.l.google.com:19302" },
+    { urls: "stun:stun4.l.google.com:19302" },
+  ],
+  iceCandidatePoolSize: 4,
 };
 const socket = io("https://" + window.location.host, { secure: false });
 class User {
@@ -14,7 +21,7 @@ class Logger {
 
 class Connection {
   logger = new Logger();
-  constructor(from, to, stream) {
+  constructor(from, to) {
     this.from = from;
     this.to = to;
     this.logger.log("Connection to...", to);
@@ -24,10 +31,11 @@ class Connection {
         `connection: ${this.to}`,
         this.peerConnection.connectionState
       );
+      this.handlerUpdate(event);
     });
     this.peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
-        this.logger.log("candidate");
+        this.logger.log("Candidate for...", to);
         socket.emit("candidate", {
           to: this.to,
           candidate: event.candidate,
@@ -58,8 +66,12 @@ class Connection {
     await this.peerConnection.setLocalDescription(answer);
     this.logger.log("Sending answer to...", this.to);
 
-    socket.emit("answer", answer);
+    socket.emit("answer", { answer, to: this.to, from: this.from });
   }
+  onUpdate(cb) {
+    this.handlerUpdate = cb;
+  }
+  handlerUpdate(...params) {}
 }
 class Room {
   connections = [];
@@ -83,7 +95,21 @@ class Room {
   }
 
   async join(user) {
+    let idx = this.connections.findIndex(
+      (connection) => connection.to === user.id
+    );
+    if (idx >= 0) {
+      let state = this.connections[idx].peerConnection.connectionState;
+
+      if (state === "connected") {
+        return;
+      }
+      this.logger.log("Removing old connection...", user.id);
+      this.connections[idx].onUpdate(() => {});
+      this.connections.splice(idx, 1);
+    }
     let connection = new Connection(this.id, user.id);
+    connection.onUpdate(this.handlerUpdate);
     connection.logger = this.logger;
     try {
       await connection.call(this.stream);
@@ -100,18 +126,41 @@ class Room {
     if (to !== this.id) {
       return;
     }
-    this.logger.log("Offer from...", from);
+    let idx = this.connections.findIndex(
+      (connection) => connection.to === from
+    );
+    if (idx < 0) {
+      this.addOffer(from, offer);
+      return;
+    }
 
-    let connection = new Connection(this.id, from);
-    await connection.answer(offer);
-    this.connections.push(connection);
-    this.handlerConnection(connection);
+    let state = this.connections[idx].peerConnection.connectionState;
+    if (state === "connected") {
+      return;
+    }
+    this.connections.splice(idx, 1);
+    this.logger.log("Removing old connection...", from);
+    this.addOffer(from, offer);
   }
 
-  async answer(user, answer) {
-    this.logger.log("Getting answer from...", user.id);
+  async addOffer(from, offer) {
+    this.logger.log("Offer from...", from);
+    let connection = new Connection(this.id, from);
+    connection.onUpdate(this.handlerUpdate);
+    await connection.answer(offer);
+    this.connections.push(connection);
+  }
+
+  async answer(to, from, answer) {
+    if (!from || !to) {
+      return;
+    }
+    if (to != this.id) {
+      return;
+    }
+    this.logger.log("Getting answer from...", from);
     let connection = this.connections.find(
-      (connection) => connection.to === user.id
+      (connection) => connection.to === from
     );
     if (!connection) {
       return;
@@ -127,7 +176,7 @@ class Room {
       new RTCSessionDescription(answer)
     );
 
-    this.logger.log("Connection start to...", user.id);
+    this.logger.log("Connection start to...", to);
   }
   async onCandidate(to, from, candidate) {
     if (to !== this.id) {
@@ -142,10 +191,13 @@ class Room {
       }
 
       try {
-        this.logger.log("Setting ice candidate ", to);
+        this.logger.log("Setting ice candidate ", from);
+
         await connection.peerConnection.addIceCandidate(candidate);
       } catch (error) {
         this.logger.log(error);
+      } finally {
+        this.logger.log("Finish setting ice candiate");
       }
     }
   }
@@ -153,4 +205,9 @@ class Room {
     this.handlerConnection = cb;
   }
   handlerConnection(connection) {}
+
+  onUpdate(cb) {
+    this.handlerUpdate = cb;
+  }
+  handlerUpdate(...params) {}
 }

@@ -1,0 +1,109 @@
+:root {
+    --size-icon: 48px;
+    --size-icon-half: 24px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    font-family: sans-serif;
+}
+
+.scroll-y {
+    overflow-y: scroll;
+}
+
+.vh-98 {
+    height: 98vh !important;
+}
+
+#localVideo {
+    max-width: 100%;
+}
+
+#logger {
+    visibility: hidden;
+    position: absolute;
+    top: 0;
+    left: 0;
+    max-height: 300px;
+    max-width: 100vw;
+    overflow-y: scroll;
+    background-color: black;
+    color: white;
+}
+
+.loader {
+    width: var(--size-icon);
+    height: var(--size-icon);
+    border: 3px dotted #FFF;
+    border-style: solid solid dotted dotted;
+    border-radius: 50%;
+    display: inline-block;
+    position: relative;
+    box-sizing: border-box;
+    animation: rotation 2s linear infinite;
+}
+
+.loader::after {
+    content: '';
+    box-sizing: border-box;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    margin: auto;
+    border: 3px dotted #007aff;
+    border-style: solid solid dotted;
+    width: var(--size-icon-half);
+    height: var(--size-icon-half);
+    border-radius: 50%;
+    animation: rotationBack 1s linear infinite;
+    transform-origin: center center;
+}
+
+@keyframes rotation {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes rotationBack {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(-360deg);
+    }
+}
+
+.danger-icon {
+    border: 2px solid #FFF;
+    width: var(--size-icon);
+    height: var(--size-icon);
+    background: #dc3545;
+    border-radius: 50%;
+    display: inline-block;
+    position: relative;
+    box-sizing: border-box;
+    transform: rotate(90deg);
+
+}
+
+.danger-icon::after {
+    content: '';
+    box-sizing: border-box;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    border: var(--size-icon-half) solid;
+    border-color: transparent #FFF;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+}

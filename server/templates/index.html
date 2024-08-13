@@ -4,106 +4,123 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WebRTC Video Streaming</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
   </head>
   <body>
-    <h1>WebRTC Video Streaming</h1>
-    <div id="logger"></div>
-    <canvas id="canvas"></canvas>
-    <video id="localVideo" width="640" height="480" muted></video>
-    <video id="remoteVideo" width="640" height="480" autoplay></video>
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-auto pt-1">
+          <video
+            id="localVideo"
+            class="video img-fluid rounded vh-98"
+            muted
+            autoplay
+          ></video>
+        </div>
+      </div>
 
-    <script
-      src="https://cdn.socket.io/4.7.5/socket.io.min.js"
-      integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO"
-      crossorigin="anonymous"
-    ></script>
-    <script src="index.js"></script>
-    <script>
-      const localVideo = document.getElementById("localVideo");
-      const remoteVideo = document.getElementById("remoteVideo");
-      const loggerC = document.getElementById("logger");
-      const logger = {
-        log: (...text) => {
-          console.log(...text);
-          loggerC.innerText += `\n ${text}`;
+      <div id="logger"></div>
+    </div>
+  </body>
+
+  <script
+    src="https://cdn.socket.io/4.7.5/socket.io.min.js"
+    integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO"
+    crossorigin="anonymous"
+  ></script>
+  <script src="index.js"></script>
+  <script>
+    const localVideo = document.getElementById("localVideo");
+    const remoteVideo = document.getElementById("remoteVideo");
+    const loggerC = document.getElementById("logger");
+    const logger = {
+      log: (...text) => {
+        console.log(...text);
+        loggerC.innerText += `\n ${text}`;
+      },
+    };
+
+    const room = new Room("Video-streaming");
+    room.setLogger(logger);
+    socket.on("connect", (id) => {
+      room.setId(socket.id);
+    });
+
+    navigator.mediaDevices
+      .getUserMedia({
+        video: {
+          facingMode: "environment",
+          frameRate: { ideal: 10, max: 15 },
+          width: { ideal: 128 },
+          height: { ideal: 128 },
         },
-      };
+      })
+      .then((stream) => {
+        localVideo.srcObject = stream;
+        localStream = stream;
+        localVideo.play();
+        localVideo.onloadedmetadata = async () => {
+          room.setStream(stream);
+        };
 
-      const room = new Room("Video-streaming");
-      room.setLogger(logger);
-      socket.on("connect", (id) => {
-        room.setId(socket.id);
+        socket.on("watcher", async (id) => {
+          room.join(new User(id));
+        });
+        socket.on("answer", async (data) => {
+          let { to, from, answer } = data.answer;
+          room.answer(to, from, answer);
+        });
+        socket.on("candidate", async ({ to, from, candidate }) => {
+          room.onCandidate(to, from, candidate);
+        });
+      })
+      .catch((err) => {
+        console.error("Error accessing the camera: ", err);
       });
 
-      navigator.mediaDevices
-        .getUserMedia({
-          video: {
-            facingMode: "environment",
-            frameRate: { ideal: 10, max: 15 },
-            width: { ideal: 128 },
-            height: { ideal: 128 },
-          },
-        })
-        .then((stream) => {
-          localVideo.srcObject = stream;
-          localStream = stream;
-          localVideo.play();
-          localVideo.onloadedmetadata = async () => {
-            room.setStream(stream);
-          };
+    // socket.on("watcher", async (id) => {
+    //   console.log("New watcher", id);
+    //   // alert(`New watcher ${id}`);
+    //   const peerConnection = new RTCPeerConnection(config);
+    //   peerConnection.addEventListener("connectionstatechange", (event) => {
+    //     console.log(`connection: ${id}`, peerConnection.connectionState);
+    //   });
+    //   // console.log(localStream);
+    //   localStream
+    //     .getTracks()
+    //     .forEach((track) => peerConnection.addTrack(track, localStream));
 
-          socket.on("watcher", async (id) => {
-            room.join(new User(id));
-          });
-          socket.on("answer", async ({ id, answer }) => {
-            room.answer(new User(id), answer);
-          });
-          socket.on("candidate", async ({ to, from, candidate }) => {
-            room.onCandidate(to, from, candidate);
-          });
-        })
-        .catch((err) => {
-          console.error("Error accessing the camera: ", err);
-        });
+    //   peerConnection.onicecandidate = (event) => {
+    //     if (event.candidate) {
+    //       console.log("candidate");
+    //       socket.emit("candidate", event.candidate);
+    //     }
+    //   };
 
-      // socket.on("watcher", async (id) => {
-      //   console.log("New watcher", id);
-      //   // alert(`New watcher ${id}`);
-      //   const peerConnection = new RTCPeerConnection(config);
-      //   peerConnection.addEventListener("connectionstatechange", (event) => {
-      //     console.log(`connection: ${id}`, peerConnection.connectionState);
-      //   });
-      //   // console.log(localStream);
-      //   localStream
-      //     .getTracks()
-      //     .forEach((track) => peerConnection.addTrack(track, localStream));
+    //   const offer = await peerConnection.createOffer();
+    //   // console.log(offer);
+    //   await peerConnection.setLocalDescription(offer);
+    //   console.log("Creating offer");
+    //   socket.emit("offer", { to: id, offer });
 
-      //   peerConnection.onicecandidate = (event) => {
-      //     if (event.candidate) {
-      //       console.log("candidate");
-      //       socket.emit("candidate", event.candidate);
-      //     }
-      //   };
+    //   peerConnection.ontrack = (event) => {
+    //     remoteVideo.srcObject = event.streams[0];
+    //   };
 
-      //   const offer = await peerConnection.createOffer();
-      //   // console.log(offer);
-      //   await peerConnection.setLocalDescription(offer);
-      //   console.log("Creating offer");
-      //   socket.emit("offer", { to: id, offer });
+    //   handlerAnswer(peerConnection, id);
+    //   handlerCandidate(peerConnection);
+    //   handlerDisconnect(peerConnection);
+    //   peerConnections.push(peerConnection);
+    // });
 
-      //   peerConnection.ontrack = (event) => {
-      //     remoteVideo.srcObject = event.streams[0];
-      //   };
-
-      //   handlerAnswer(peerConnection, id);
-      //   handlerCandidate(peerConnection);
-      //   handlerDisconnect(peerConnection);
-      //   peerConnections.push(peerConnection);
-      // });
-
-      // window.onunload = window.onbeforeunload = () => {
-      //   socket.disconnect();
-      // };
-    </script>
-  </body>
+    // window.onunload = window.onbeforeunload = () => {
+    //   socket.disconnect();
+    // };
+  </script>
 </html>
