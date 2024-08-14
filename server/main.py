@@ -8,7 +8,7 @@ from aiortc.contrib.media import MediaRelay
 from fastapi.responses import HTMLResponse
 
 from fastapi.staticfiles import StaticFiles
-
+import time
 import logging
 import asyncio
 
@@ -27,35 +27,42 @@ app.mount("/static", StaticFiles(directory="./templates"), name="static")
 
 pcs:set[RTCPeerConnection] = set()
 relay = MediaRelay()
-
 class VideoTransformTrack(VideoStreamTrack):
     def __init__(self, track):
-        super().__init__()  # don't forget this!
+        super().__init__()
         self.track = track
-        self.editor =None
+        self.editor = None
+        self.frame = None
+        self.last_update_time = 0
+        self.update_interval = 1  # Update every 2 seconds
 
     async def recv(self):
         frame = await self.track.recv()
-        # Convert frame to OpenCV format
-        img = frame.to_ndarray(format="bgr24")
-        # Process frame (display it)
-        try:
-            if(self.editor is None):
-                self.editor = Editor(img)
-            # self.editor.setImage(img)
+        self.frame = frame.to_ndarray(format="bgr24")
+        
+        # Schedule processing if needed
+        current_time = time.time()
+        if current_time - self.last_update_time >= self.update_interval:
+            await self.process_frame()
 
-            s =self.editor.process(img)
-            cv2.imshow('view-1',s)      
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                print('s')
-                pass
-        # Introduce a delay to control the frequency
-        # await asyncio.sleep(0.1)  # Adjust the delay time (in seconds) as needed
-        # Return the frame unchanged
-        except Execption as e:
-            print(e)
         return frame
 
+    async def process_frame(self):
+        if self.frame is None:
+            return
+        
+        if self.editor is None:
+            self.editor = Editor(self.frame)
+
+        # Process frame
+        processed_frame = self.editor.process(self.frame)
+        
+        # Show the processed frame
+        cv2.imshow('view-1', processed_frame)
+        cv2.waitKey(1)
+
+        # Update last update time
+        self.last_update_time = time.time()
 @app.get('/', response_class=HTMLResponse)
 def index():
     with open("templates/index.html") as f:
