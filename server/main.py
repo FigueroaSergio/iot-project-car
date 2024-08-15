@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 import logging
 import asyncio
-
+import time
 import uvicorn
 from image import frame_processor
 from editor import Editor
@@ -30,31 +30,27 @@ relay = MediaRelay()
 
 class VideoTransformTrack(VideoStreamTrack):
     def __init__(self, track):
-        super().__init__()  # don't forget this!
+        super().__init__()
         self.track = track
-        self.editor =None
+        self.editor = None
 
     async def recv(self):
         frame = await self.track.recv()
-        # Convert frame to OpenCV format
         img = frame.to_ndarray(format="bgr24")
-        # Process frame (display it)
         try:
-            if(self.editor is None):
+            if self.editor is None:
                 self.editor = Editor(img)
-            # self.editor.setImage(img)
-
-            s =self.editor.process(img)
-            cv2.imshow('view-1',s)      
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                print('s')
-                pass
-        # Introduce a delay to control the frequency
-        # await asyncio.sleep(0.1)  # Adjust the delay time (in seconds) as needed
-        # Return the frame unchanged
-        except Execption as e:
+            
+            processed_img = await asyncio.get_event_loop().run_in_executor(None, self.editor.process, img)
+            
+            # Display the processed image using OpenCV
+            cv2.imshow('view-1', processed_img)
+            cv2.waitKey(1)  # Allow OpenCV to process events
+            pass
+        except Exception as e:
             print(e)
         return frame
+       
 
 @app.get('/', response_class=HTMLResponse)
 def index():
