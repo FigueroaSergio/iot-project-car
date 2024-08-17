@@ -67,13 +67,14 @@
         localVideo.play();
         localVideo.onloadedmetadata = async () => {
           room.setStream(stream);
+          room.join(new User("server"));
         };
 
         socket.on("watcher", async (id) => {
           room.join(new User(id));
         });
         socket.on("answer", async (data) => {
-          let { to, from, answer } = data.answer;
+          let { to, from, answer } = data;
           room.answer(to, from, answer);
         });
         socket.on("candidate", async ({ to, from, candidate }) => {

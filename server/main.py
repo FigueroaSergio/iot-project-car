@@ -58,11 +58,6 @@ def index():
         html_content = f.read()
     return HTMLResponse(content=html_content)
 
-@app.get('/controller', response_class=HTMLResponse)
-def viewer():
-    with open("templates/watcher.html") as f:
-        html_content = f.read()
-    return HTMLResponse(content=html_content)
 
 @sio.on('broadcaster')
 async def broadcaster(id):
@@ -82,9 +77,13 @@ async def watcher(id):
     
 
 @sio.on('offer')
-async def offer(id,localDescription):
-    print('Received offer event',id)
-    await sio.emit('offer', localDescription)
+async def offer(id, data):
+    print('Received offer event',id, data)
+    if(data['to']=='server'):
+        await stream(id, data)
+        return
+    await sio.emit('offer', data)
+    return
 
 # @sio.event
 # def connect():
@@ -95,7 +94,7 @@ async def offer(id,localDescription):
 @sio.on('answer')
 async def answer(id,data):
     print('Received answer event',id)
-    await sio.emit('answer', {'answer':data,'id':id})
+    await sio.emit('answer', data)
 
 @sio.on('candidate')
 async def on_candidate(id,candidate):
@@ -109,10 +108,8 @@ async def on_candidate(id,candidate):
 #     pcs.discard(pc)
 
 
-@sio.on('stream')
-async def stream(id,localDescription):
-
-  
+async def stream(id,data):
+    localDescription=data['offer']
     global pcs
     print('Received stream')
     offer = RTCSessionDescription(sdp=localDescription['sdp'], type=localDescription['type'])
@@ -142,8 +139,8 @@ async def stream(id,localDescription):
         logging.error(f"Error processing data: {e}")
 
     try:
-        print('answering')
-        await sio.emit('answer', {'answer':{'sdp': pc.localDescription.sdp, 'type': pc.localDescription.type},'id':'server'})
+        print('Answering')
+        await sio.emit('answer', {'answer':{'sdp': pc.localDescription.sdp, 'type': pc.localDescription.type},'from':'server', 'to':id})
     except Exception as e:
         print(f"Error in stream function: {e}")
 
