@@ -4,6 +4,9 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import logging
+import math
+
 import time
 from lane_detectionp import LaneDetector  # Import your lane detection class
 from steering_control import calculate_steering_angle  # Import your steering control function
@@ -12,6 +15,7 @@ from steering_control import calculate_steering_angle  # Import your steering co
 class Editor:
     def __init__(self, image):
         self.img = image
+        width, height = self.img.shape[:2]
         self.init = {
             'Point-0-x': 0,
             'Point-0-y': 128,
@@ -24,19 +28,19 @@ class Editor:
             'min-line': 20,
             'threshold': 8,
             'step': 0,
-            'c-lower-x': 84,
+            'c-lower-x': 0,
             'c-lower-y': 0,
-            'c-lower-z': 160,
-            'c-upper-x': 255,
-            'c-upper-y': 95,
-            'c-upper-z': 255,
+            'c-lower-z': 0,
+            'c-upper-x': 120,
+            'c-upper-y': 110,
+            'c-upper-z': 120,
         }
         
         
         self.last_update_time = time.time()  # Track the last time drawing and calculation were done
         self.update_interval = 1.0   # certi calcoli da fare ogni 10 frames
+        self.curr_steering_angle = 90
         
-        width, height = self.img.shape[:2]
         print(f"Image dimensions: {width}x{height}")
         
         # Initialize points for the polygon region
@@ -44,8 +48,7 @@ class Editor:
         self.top_left = [self.init['Point-1-x'], self.init['Point-1-y']]
         self.top_right = [self.init['Point-2-x'], self.init['Point-2-y']]
         self.bottom_right = [self.init['Point-3-x'], self.init['Point-3-y']]
-        self.points = [self.bottom_left, self.top_left, self.bottom_right, self.bottom_right]
-        
+        self.points = [self.bottom_left, self.top_left, self.top_right, self.bottom_right]
         cv2.namedWindow('Track')
         self.loading = True
         self.createTrackbars(self.img)
@@ -88,28 +91,63 @@ class Editor:
         min_line = cv2.getTrackbarPos(f'min-line', 'Track')
         thresh = cv2.getTrackbarPos(f'threshold', 'Track')
         return cv2.HoughLinesP(image, 1, np.pi/180, threshold=thresh, minLineLength=min_line, maxLineGap=50)
+        
+    def make_points(self, frame, line):
+        height, width, _ = frame.shape
+        slope, intercept = line
+        y1 = height  # bottom of the frame
+        y2 = int(y1 * 1 / 2)  # make points from middle of the frame down
+
+        # bound the coordinates within the frame
+        x1 = max(-width, min(2 * width, int((y1 - intercept) / slope)))
+        x2 = max(-width, min(2 * width, int((y2 - intercept) / slope)))
+        return [[x1, y1, x2, y2]]
     
-    def average_slope_intercept(self, lines):
-        left_lines = []
-        left_weights = []
-        right_lines = []
-        right_weights = []
+    def average_slope_intercept(self, lines, frame):
+        """
+        This function combines line segments into one or two lane lines
+        If all line slopes are < 0: then we only have detected left lane
+        If all line slopes are > 0: then we only have detected right lane
+        """
+        lane_lines = []
+        if lines is None:
+            logging.info('No lines segments detected')
+            return lane_lines
+
+        height, width, _ = frame.shape
+        left_fit = []
+        right_fit = []
+
+        boundary = 1/3
+        left_region_boundary = width * (1 - boundary)  # left lane line segment should be on left 2/3 of the screen
+        right_region_boundary = width * boundary # right lane line segment should be on left 2/3 of the screen
+
         for line in lines:
             for x1, y1, x2, y2 in line:
                 if x1 == x2:
+                    logging.info('skipping vertical line segment (slope=inf): %s' % lines)
                     continue
-                slope = (y2 - y1) / (x2 - x1)
-                intercept = y1 - (slope * x1)
-                length = np.sqrt(((y2 - y1) ** 2) + ((x2 - x1) ** 2))
+                fit = np.polyfit((x1, x2), (y1, y2), 1)
+                slope = fit[0]
+                intercept = fit[1]
                 if slope < 0:
-                    left_lines.append((slope, intercept))
-                    left_weights.append(length)
+                    if x1 < left_region_boundary and x2 < left_region_boundary:
+                        left_fit.append((slope, intercept))
                 else:
-                    right_lines.append((slope, intercept))
-                    right_weights.append(length)
-        left_lane = np.dot(left_weights, left_lines) / np.sum(left_weights) if len(left_weights) > 0 else None
-        right_lane = np.dot(right_weights, right_lines) / np.sum(right_weights) if len(right_weights) > 0 else None
-        return left_lane, right_lane
+                    if x1 > right_region_boundary and x2 > right_region_boundary:
+                        right_fit.append((slope, intercept))
+
+        left_fit_average = np.average(left_fit, axis=0)
+        if len(left_fit) > 0:
+            lane_lines.append(self.make_points(frame, left_fit_average))
+
+        right_fit_average = np.average(right_fit, axis=0)
+        if len(right_fit) > 0:
+            lane_lines.append(self.make_points(frame, right_fit_average))
+
+        print('lane lines: %s' %lane_lines)  # [[[316, 720, 484, 432]], [[1009, 720, 718, 432]]]
+
+        return lane_lines
     
     def pixel_points(self, y1, y2, line):
         if line is None:
@@ -124,12 +162,7 @@ class Editor:
     def lane_lines(self, image, lines):
         if lines is None:
             return None
-        left_lane, right_lane = self.average_slope_intercept(lines)
-        y1 = image.shape[0]
-        y2 = y1 * 0.6
-        left_line = self.pixel_points(y1, y2, left_lane)
-        right_line = self.pixel_points(y1, y2, right_lane)
-        return left_line, right_line
+        return self.average_slope_intercept(lines,image)
     
     def draw_lane_lines(self, image, lines, color=[255, 0, 0], thickness=12):
         line_image = np.zeros_like(image)
@@ -137,7 +170,8 @@ class Editor:
             return image
         for line in lines:
             if line is not None:
-                cv2.line(line_image, *line, color, thickness)
+                for x1, y1, x2, y2 in line:
+                    cv2.line(line_image, (x1, y1), (x2, y2), color, thickness)
         return cv2.addWeighted(image, 1.0, line_image, 1.0, 0.0)
     
     def setImage(self, image):
@@ -149,6 +183,85 @@ class Editor:
         img = np.copy(self.img)
         r = self.process(img)
     ###
+    def compute_steering_angle(self,frame, lane_lines):
+        """ Find the steering angle based on lane line coordinate
+            We assume that camera is calibrated to point to dead center
+        """
+        if len(lane_lines) == 0:
+            logging.info('No lane lines detected, do nothing')
+            return -90
+
+        height, width, _ = frame.shape
+        if len(lane_lines) == 1:
+            logging.debug('Only detected one lane line, just follow it. %s' % lane_lines[0])
+            x1, _, x2, _ = lane_lines[0][0]
+            x_offset = x2 - x1
+        else:
+            _, _, left_x2, _ = lane_lines[0][0]
+            _, _, right_x2, _ = lane_lines[1][0]
+            camera_mid_offset_percent = 0.02 # 0.0 means car pointing to center, -0.03: car is centered to left, +0.03 means car pointing to right
+            mid = int(width / 2 * (1 + camera_mid_offset_percent))
+            x_offset = (left_x2 + right_x2) / 2 - mid
+
+        # find the steering angle, which is angle between navigation direction to end of center line
+        y_offset = int(height / 2)
+
+        angle_to_mid_radian = math.atan(x_offset / y_offset)  # angle (in radian) to center vertical line
+        angle_to_mid_deg = int(angle_to_mid_radian * 180.0 / math.pi)  # angle (in degrees) to center vertical line
+        steering_angle = angle_to_mid_deg + 90  # this is the steering angle needed by picar front wheel
+
+        logging.debug('new steering angle: %s' % steering_angle)
+        return steering_angle
+
+    def stabilize_steering_angle(self,curr_steering_angle, new_steering_angle, num_of_lane_lines, max_angle_deviation_two_lines=5, max_angle_deviation_one_lane=1):
+        """
+        Using last steering angle to stabilize the steering angle
+        This can be improved to use last N angles, etc
+        if new angle is too different from current angle, only turn by max_angle_deviation degrees
+        """
+        if num_of_lane_lines == 2 :
+            # if both lane lines detected, then we can deviate more
+            max_angle_deviation = max_angle_deviation_two_lines
+        else :
+            # if only one lane detected, don't deviate too much
+            max_angle_deviation = max_angle_deviation_one_lane
+
+        angle_deviation = new_steering_angle - curr_steering_angle
+        if abs(angle_deviation) > max_angle_deviation:
+            stabilized_steering_angle = int(curr_steering_angle
+                                            + max_angle_deviation * angle_deviation / abs(angle_deviation))
+        else:
+            stabilized_steering_angle = new_steering_angle
+        logging.info('Proposed angle: %s, stabilized angle: %s' % (new_steering_angle, stabilized_steering_angle))
+        return stabilized_steering_angle
+
+    def display_heading_line(self,frame, steering_angle, line_color=(0, 0, 255), line_width=5, ):
+        heading_image = np.zeros_like(frame)
+        height, width, _ = frame.shape
+
+        # figure out the heading line from steering angle
+        # heading line (x1,y1) is always center bottom of the screen
+        # (x2, y2) requires a bit of trigonometry
+
+        # Note: the steering angle of:
+        # 0-89 degree: turn left
+        # 90 degree: going straight
+        # 91-180 degree: turn right 
+        steering_angle_radian = steering_angle / 180.0 * math.pi
+        x1 = int(width / 2)
+        y1 = height
+        x2 = int(x1 - height / 2 / math.tan(steering_angle_radian))
+        y2 = int(height / 2)
+
+        cv2.line(heading_image, (x1, y1), (x2, y2), line_color, line_width)
+        heading_image = cv2.addWeighted(frame, 0.8, heading_image, 1, 1)
+
+        return heading_image
+
+    def steer(self, frame, lane_lines):
+        new_steering_angle = self.compute_steering_angle(frame, lane_lines)
+        self.curr_steering_angle = self.stabilize_steering_angle(self.curr_steering_angle, new_steering_angle, len(lane_lines))
+        return self.display_heading_line(frame, self.curr_steering_angle)
 
     def process(self, img):
         for i in range(4):
@@ -189,57 +302,13 @@ class Editor:
             
             lines = self.hough_transform(region)
             l=self.lane_lines(img, lines)
-            result = self.draw_lane_lines(img, self.lane_lines(img, lines))
+            result = self.draw_lane_lines(img, l)
             if(step==3):
                 return result
             # cv2.imshow('result',result)
            #metto il codice dentro l'if se no rompe tutto quell'errore
             if(step==4):
-                if l is not None:
-                    lines = []
-                    left_line, right_line= l
-                    if left_line is not None:
-                        left_line= (left_line[0][0],left_line[0][1],left_line[1][0],left_line[1][0],left_line[1][1])
-                        lines.append(left_line)
-                    if right_line is not None:
-                        right_line= (right_line[0][0],right_line[0][1],right_line[1][0],right_line[1][0],right_line[1][1])
-                        lines.append(right_line)
-                if lines is not None:
-                    for line in lines:
-                        for x1, y1, x2, y2 in line:
-                            cv2.line(line_image, (x1, y1), (x2, y2), (0, 255, 0), 3)
-
-                            # Calcola l'angolo tra i punti (x1, y1) e (x2, y2)
-                            angle = np.arctan2((y2 - y1), (x2 - x1)) * 180 / np.pi
-                            angles.append(angle)
-
-                            # Aggiungi i punti (x1, y1) e (x2, y2) alla lista points
-                            points.append(((x1, y1), (x2, y2)))
-                # cv2.imshow('lines',line_image)
-                if angles:
-                    median_angle = np.median(angles)
-                    if median_angle is not None:
-                        if median_angle > 0:
-                            corrected_angle = median_angle + 53
-                        else:
-                            corrected_angle = median_angle + 90
-
-                        height, width, _ = img.shape
-                        steer_length = 200
-                        center_x = width // 2
-                        center_y = height
-                        end_x = int(center_x + steer_length * np.cos(np.radians(corrected_angle)))
-                        end_y = int(center_y - steer_length * np.sin(np.radians(corrected_angle)))
-
-                        # Disegna la linea di sterzata
-                        cv2.line(line_image, (center_x, center_y), (end_x, end_y), (255, 0, 0), 5)
-
-                        plt.title(f"Angolo Mediano di Sterzata: {corrected_angle:.2f} gradi")
-                    else:
-                        plt.title("Nessuna Linea Rilevata")
-                else:
-                    plt.title("Nessuna Linea Rilevata")
-                    return line_image
+                return self.steer(result,l)
             if(step==5):
                 '''
                 calcolo diverso delle linee, usa lane_detectionp.py e steering_control.py
@@ -249,11 +318,6 @@ class Editor:
                 # Initialize LaneDetector with the current image
                 lane_detector = LaneDetector(img)
 
-                # Apply threshold to get the mask
-                mask = lane_detector.apply_threshold()
-
-                # Detect lines in the mask
-                lines = lane_detector.detect_lines(mask)
 
                 # Draw lane area and get lane center
                 img_with_lane_area, lane_center = lane_detector.draw_lane_area(lines)
