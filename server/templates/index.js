@@ -114,6 +114,7 @@ class Room {
     try {
       await connection.call(this.stream);
       this.connections.push(connection);
+      this.handlerUpdate();
     } catch (error) {
       this.logger.log(error);
     }

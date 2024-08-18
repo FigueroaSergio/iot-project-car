@@ -1,8 +1,84 @@
-const Buttton = ({ text, color, onclick, size = "sm" }) => {
+const IconDelete = () => {
+  let IconDiv = document.createElement("div");
+  IconDiv.innerHTML = `<svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                fill="currentColor"
+                class="bi bi-trash-fill"
+                viewBox="0 0 16 16"
+              >
+                <path
+                  d="M2.5 1a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1H3v9a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V4h.5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H10a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1zm3 4a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 .5-.5M8 5a.5.5 0 0 1 .5.5v7a.5.5 0 0 1-1 0v-7A.5.5 0 0 1 8 5m3 .5v7a.5.5 0 0 1-1 0v-7a.5.5 0 0 1 1 0"
+                />
+              </svg>`;
+  return IconDiv;
+};
+
+const IconReload = () => {
+  let IconDiv = document.createElement("div");
+  IconDiv.innerHTML = ` <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                fill="currentColor"
+                class="bi bi-arrow-clockwise"
+                viewBox="0 0 16 16"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z"
+                />
+                <path
+                  d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466"
+                />
+              </svg>`;
+  return IconDiv;
+};
+const IconDot = () => {
+  let IconDiv = document.createElement("div");
+  IconDiv.innerHTML = `<svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    fill="currentColor"
+                    class="bi bi-circle-fill"
+                    viewBox="0 0 16 16"
+                  >
+                    <circle cx="8" cy="8" r="8" />
+                  </svg>`;
+  return IconDiv;
+};
+const IconRegister = {
+  delete: IconDelete,
+  reload: IconReload,
+  dot: IconDot,
+};
+
+const Icon = (name) => {
+  return IconRegister?.[name] ? IconRegister[name]() : null;
+};
+
+const Button = ({
+  text,
+  color,
+  onclick,
+  size = "sm",
+  icon = null,
+  bg = "dark-subtle",
+  className = "",
+}) => {
   const btn = document.createElement("button");
-  btn.className = `btn btn-${color} btn-${size}`;
+  btn.className = `btn bg-${bg} text-${color} btn-${size} ` + className;
+
+  btn.type = "button";
+
   btn.onclick = onclick;
-  btn.innerText = text;
+  let iconBtn = Icon(icon);
+  if (iconBtn) {
+    btn.appendChild(iconBtn);
+  }
+  btn.appendChild(document.createTextNode(text ?? ""));
   return btn;
 };
 /* 
@@ -39,6 +115,92 @@ const ButtonGroup = ({ buttons }) => {
     </div>
 </div> 
 */
+
+const CardConnection = ({ user, status, onDelete, onReload }) => {
+  const cardDiv = document.createElement("div");
+  cardDiv.className = "card text-light p-2 mt-3";
+
+  // Create the d-flex container div
+  const dFlexDiv = document.createElement("div");
+  dFlexDiv.className = "d-flex justify-content-between";
+
+  // Create the "User" text div
+  const userDiv = document.createElement("div");
+  userDiv.className = "fw-bold";
+  userDiv.textContent = "User";
+
+  // Create the badge container div
+  const badgeContainer = document.createElement("div");
+
+  // Create the badge span
+  const badgeSpan = document.createElement("span");
+  badgeSpan.className = "badge bg-dark-subtle d-flex align-items-center";
+
+  // Create the text-danger div for the icon
+  const iconDiv = document.createElement("div");
+  let colorState = "warning";
+  if (status === "failed") {
+    colorState = "danger";
+  }
+  if (status === "connected") {
+    colorState = "success";
+  }
+  if (status === "connecting") {
+    colorState = "primary";
+  }
+
+  iconDiv.className = `text-${colorState}`;
+
+  // Create the SVG icon
+  const svgIcon = IconDot();
+
+  // Append the circle to the SVG
+
+  // Append the SVG to the iconDiv
+  iconDiv.appendChild(svgIcon);
+
+  // Create the "New" text span
+  const newSpan = document.createElement("span");
+  newSpan.className = "ps-1";
+  newSpan.textContent = status;
+
+  // Append the iconDiv and newSpan to the badgeSpan
+  badgeSpan.appendChild(iconDiv);
+  badgeSpan.appendChild(newSpan);
+
+  // Append the badgeSpan to the badgeContainer
+  badgeContainer.appendChild(badgeSpan);
+
+  // Append the userDiv and badgeContainer to the dFlexDiv
+  dFlexDiv.appendChild(userDiv);
+  dFlexDiv.appendChild(badgeContainer);
+
+  // Create the ID text div
+  const idDiv = document.createElement("div");
+  idDiv.textContent = user;
+
+  // Create the empty div with padding-top
+  const paddingDiv = document.createElement("div");
+  paddingDiv.className = "pt-3";
+  paddingDiv.appendChild(
+    Button({ icon: "delete", color: "danger", size: "md", onclick: onDelete })
+  );
+
+  paddingDiv.appendChild(
+    Button({
+      icon: "reload",
+      color: "primary",
+      size: "md",
+      className: "ms-1",
+      onclick: onReload,
+    })
+  );
+  // Append the dFlexDiv, idDiv, and paddingDiv to the main cardDiv
+  cardDiv.appendChild(dFlexDiv);
+  cardDiv.appendChild(idDiv);
+  cardDiv.appendChild(paddingDiv);
+  return cardDiv;
+};
 
 const ActionCard = ({ icon, buttons }) => {
   // Create the main card div

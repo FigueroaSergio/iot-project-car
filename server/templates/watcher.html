@@ -52,7 +52,6 @@
     const room = new Room("Video-streaming");
     socket.emit("watcher");
     room.onUpdate(() => {
-      console.log(room.connections);
       container.innerHTML = "";
 
       room.connections.forEach((connection, i) => {
