@@ -49,10 +49,19 @@ const IconDot = () => {
                   </svg>`;
   return IconDiv;
 };
+const IconEye = () => {
+  let IconDiv = document.createElement("div");
+  IconDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eye-fill" viewBox="0 0 16 16">
+  <path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0"/>
+  <path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8m8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7"/>
+</svg>`;
+  return IconDiv;
+};
 const IconRegister = {
   delete: IconDelete,
   reload: IconReload,
   dot: IconDot,
+  eye: IconEye,
 };
 
 const Icon = (name) => {
@@ -94,7 +103,7 @@ const ButtonGroup = ({ buttons }) => {
   btnGroup.className = "btn-group";
   btnGroup.role = "group";
   buttons.forEach((btn) => {
-    btnGroup.appendChild(Buttton(btn));
+    btnGroup.appendChild(Button(btn));
   });
   return btnGroup;
 };
@@ -118,7 +127,7 @@ const ButtonGroup = ({ buttons }) => {
 
 const CardConnection = ({ user, status, onDelete, onReload }) => {
   const cardDiv = document.createElement("div");
-  cardDiv.className = "card text-light p-2 mt-3";
+  cardDiv.className = "card p-2 mt-3";
 
   // Create the d-flex container div
   const dFlexDiv = document.createElement("div");
@@ -199,6 +208,124 @@ const CardConnection = ({ user, status, onDelete, onReload }) => {
   cardDiv.appendChild(dFlexDiv);
   cardDiv.appendChild(idDiv);
   cardDiv.appendChild(paddingDiv);
+  return cardDiv;
+};
+
+const CardConnectionVideo = ({
+  user,
+  status,
+  onDelete,
+  onReload,
+  onView,
+  src,
+}) => {
+  const cardDiv = document.createElement("div");
+  cardDiv.className = "card p-0 mt-2 h-100";
+
+  let video = document.createElement("video");
+  video.className = "card-img img-fluid rounded ratio ratio-1x1";
+  video.autoplay = true;
+  video.muted = true;
+  video.volume = 0;
+  video.srcObject = src;
+
+  let over = document.createElement("div");
+  over.className = "card-img-overlay bg-dark bg-opacity-75 d-flex flex-column";
+
+  // Create the d-flex container div
+  const dFlexDiv = document.createElement("div");
+  dFlexDiv.className = "d-flex justify-content-between ";
+
+  // Create the "User" text div
+  const userDiv = document.createElement("div");
+  userDiv.className = "fw-bold";
+  userDiv.textContent = "User";
+
+  // Create the badge container div
+  const badgeContainer = document.createElement("div");
+
+  // Create the badge span
+  const badgeSpan = document.createElement("span");
+  badgeSpan.className = "badge bg-dark-subtle d-flex align-items-center";
+
+  // Create the text-danger div for the icon
+  const iconDiv = document.createElement("div");
+  let colorState = "warning";
+  if (status === "failed") {
+    colorState = "danger";
+  }
+  if (status === "connected") {
+    colorState = "success";
+  }
+  if (status === "connecting") {
+    colorState = "primary";
+  }
+
+  iconDiv.className = `text-${colorState}`;
+
+  // Create the SVG icon
+  const svgIcon = IconDot();
+
+  // Append the circle to the SVG
+
+  // Append the SVG to the iconDiv
+  iconDiv.appendChild(svgIcon);
+
+  // Create the "New" text span
+  const newSpan = document.createElement("span");
+  newSpan.className = "ps-1";
+  newSpan.textContent = status;
+
+  // Append the iconDiv and newSpan to the badgeSpan
+  badgeSpan.appendChild(iconDiv);
+  badgeSpan.appendChild(newSpan);
+
+  // Append the badgeSpan to the badgeContainer
+  badgeContainer.appendChild(badgeSpan);
+
+  // Append the userDiv and badgeContainer to the dFlexDiv
+  dFlexDiv.appendChild(userDiv);
+  dFlexDiv.appendChild(badgeContainer);
+
+  // Create the ID text div
+  const idDiv = document.createElement("div");
+  idDiv.textContent = user;
+
+  // Create the empty div with padding-top
+  const paddingDiv = document.createElement("div");
+  paddingDiv.className = "pt-3 mt-auto";
+  paddingDiv.appendChild(
+    Button({ icon: "delete", color: "danger", size: "md", onclick: onDelete })
+  );
+
+  if (status !== "connected") {
+    paddingDiv.appendChild(
+      Button({
+        icon: "reload",
+        color: "primary",
+        size: "md",
+        className: "ms-1",
+        onclick: onReload,
+      })
+    );
+  } else {
+    paddingDiv.appendChild(
+      Button({
+        icon: "eye",
+        color: "success",
+        size: "md",
+        className: "ms-1",
+        onclick: onView,
+      })
+    );
+  }
+
+  // Append the dFlexDiv, idDiv, and paddingDiv to the main cardDiv
+  cardDiv.appendChild(video);
+  over.appendChild(dFlexDiv);
+  over.appendChild(idDiv);
+  over.appendChild(paddingDiv);
+  cardDiv.appendChild(over);
   return cardDiv;
 };
 
