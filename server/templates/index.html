@@ -95,10 +95,7 @@
           return;
         }
         container.appendChild(content);
-
-        // remoteVideo.srcObject = connection.stream;
       });
-      // console.log("e", connection.stream);
     });
     room.setLogger(logger);
     socket.on("connect", (id) => {
@@ -137,44 +134,5 @@
       .catch((err) => {
         console.error("Error accessing the camera: ", err);
       });
-
-    // socket.on("watcher", async (id) => {
-    //   console.log("New watcher", id);
-    //   // alert(`New watcher ${id}`);
-    //   const peerConnection = new RTCPeerConnection(config);
-    //   peerConnection.addEventListener("connectionstatechange", (event) => {
-    //     console.log(`connection: ${id}`, peerConnection.connectionState);
-    //   });
-    //   // console.log(localStream);
-    //   localStream
-    //     .getTracks()
-    //     .forEach((track) => peerConnection.addTrack(track, localStream));
-
-    //   peerConnection.onicecandidate = (event) => {
-    //     if (event.candidate) {
-    //       console.log("candidate");
-    //       socket.emit("candidate", event.candidate);
-    //     }
-    //   };
-
-    //   const offer = await peerConnection.createOffer();
-    //   // console.log(offer);
-    //   await peerConnection.setLocalDescription(offer);
-    //   console.log("Creating offer");
-    //   socket.emit("offer", { to: id, offer });
-
-    //   peerConnection.ontrack = (event) => {
-    //     remoteVideo.srcObject = event.streams[0];
-    //   };
-
-    //   handlerAnswer(peerConnection, id);
-    //   handlerCandidate(peerConnection);
-    //   handlerDisconnect(peerConnection);
-    //   peerConnections.push(peerConnection);
-    // });
-
-    // window.onunload = window.onbeforeunload = () => {
-    //   socket.disconnect();
-    // };
   </script>
 </html>
