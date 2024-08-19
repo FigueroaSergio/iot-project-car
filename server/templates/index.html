@@ -117,7 +117,7 @@
         localVideo.play();
         localVideo.onloadedmetadata = async () => {
           room.setStream(stream);
-          // room.join(new User("server"));
+          room.join(new User("server"));
         };
 
         socket.on("watcher", async (id) => {

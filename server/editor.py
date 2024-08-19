@@ -13,27 +13,28 @@ from steering_control import calculate_steering_angle  # Import your steering co
 
 
 class Editor:
-    def __init__(self, image):
+    def __init__(self, image, opts={}):
         self.img = image
-        width, height = self.img.shape[:2]
+        height,width = self.img.shape[:2]
+
         self.init = {
-            'Point-0-x': 0,
-            'Point-0-y': 128,
-            'Point-1-x': 0,
-            'Point-1-y': 0,
-            'Point-2-x': 128,
-            'Point-2-y': 0,
-            'Point-3-x': 128,
-            'Point-3-y': 128,
-            'min-line': 20,
-            'threshold': 8,
-            'step': 0,
-            'c-lower-x': 0,
-            'c-lower-y': 0,
-            'c-lower-z': 0,
-            'c-upper-x': 120,
-            'c-upper-y': 110,
-            'c-upper-z': 120,
+            'Point-0-x': opts.get('Point-0-x',0),
+            'Point-0-y': opts.get('Point-0-y',height),
+            'Point-1-x': opts.get('Point-1-x',0),
+            'Point-1-y': opts.get('Point-1-y',0),
+            'Point-2-x': opts.get('Point-2-x',width),
+            'Point-2-y': opts.get('Point-2-y',0),
+            'Point-3-x': opts.get('Point-3-x',width),
+            'Point-3-y': opts.get('Point-3-y',height),
+            'min-line': opts.get('min-line',20),
+            'threshold': opts.get('threshold',8),
+            'step': opts.get('step',4),
+            'c-lower-x': opts.get('c-lower-x',0),
+            'c-lower-y': opts.get('c-lower-y',0),
+            'c-lower-z': opts.get('c-lower-z',0),
+            'c-upper-x': opts.get('c-upper-x',120),
+            'c-upper-y': opts.get('c-upper-y',110),
+            'c-upper-z': opts.get('c-upper-z',120),
         }
         
         
@@ -61,7 +62,7 @@ class Editor:
         for i, point in enumerate(self.points):
             cv2.createTrackbar(f'Point-{i}-x', 'Track', int(point[0]), height, self.render)
             cv2.createTrackbar(f'Point-{i}-y', 'Track', int(point[1]), width, self.render)
-        cv2.createTrackbar(f'Step', 'Track', 0, 5, self.render)
+        cv2.createTrackbar(f'Step', 'Track', self.init['step'], 5, self.render)
         cv2.createTrackbar(f'min-line', 'Track', self.init['min-line'], 500, self.render)
         cv2.createTrackbar(f'threshold', 'Track', self.init['threshold'], 500, self.render)
 
@@ -145,7 +146,7 @@ class Editor:
         if len(right_fit) > 0:
             lane_lines.append(self.make_points(frame, right_fit_average))
 
-        print('lane lines: %s' %lane_lines)  # [[[316, 720, 484, 432]], [[1009, 720, 718, 432]]]
+        # print('lane lines: %s' %lane_lines)  # [[[316, 720, 484, 432]], [[1009, 720, 718, 432]]]
 
         return lane_lines
     
@@ -187,6 +188,9 @@ class Editor:
         """ Find the steering angle based on lane line coordinate
             We assume that camera is calibrated to point to dead center
         """
+        if(lane_lines is None):
+            # print("No lines")
+            return -90
         if len(lane_lines) == 0:
             logging.info('No lane lines detected, do nothing')
             return -90
@@ -259,8 +263,9 @@ class Editor:
         return heading_image
 
     def steer(self, frame, lane_lines):
+        lines = len(lane_lines) if lane_lines is not None else 0
         new_steering_angle = self.compute_steering_angle(frame, lane_lines)
-        self.curr_steering_angle = self.stabilize_steering_angle(self.curr_steering_angle, new_steering_angle, len(lane_lines))
+        self.curr_steering_angle = self.stabilize_steering_angle(self.curr_steering_angle, new_steering_angle, lines)
         return self.display_heading_line(frame, self.curr_steering_angle)
 
     def process(self, img):
@@ -268,7 +273,7 @@ class Editor:
             x=cv2.getTrackbarPos(f'Point-{i}-x','Track')
             y=cv2.getTrackbarPos(f'Point-{i}-y','Track')
             self.points[i]=[x,y]
-            circle = cv2.circle(img,[x,y],10,(0,255,0),cv2.FILLED)
+            circle = cv2.circle(img,[x,y],5,(0,255,0),cv2.FILLED)
         step = cv2.getTrackbarPos(f'Step','Track')
         try:
             hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -308,6 +313,7 @@ class Editor:
             # cv2.imshow('result',result)
            #metto il codice dentro l'if se no rompe tutto quell'errore
             if(step==4):
+                print(f"Steering Angle: {self.curr_steering_angle:.2f} degrees")
                 return self.steer(result,l)
             if(step==5):
                 '''
@@ -326,7 +332,7 @@ class Editor:
                 if current_time - self.last_update_time >= self.update_interval:
                     # Calculate steering angle and direction
                     steering_angle, direction = calculate_steering_angle(img, lane_center)
-
+                    self.curr_steering_angle= steering_angle
                     # Print steering angle and direction to the terminal
                     print(f"Steering Angle: {steering_angle:.2f} degrees")
                     print(f"Direction: {direction}")

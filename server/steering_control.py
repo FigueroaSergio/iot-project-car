@@ -42,6 +42,7 @@ def calculate_steering_angle(frame, lane_center):
             direction = "Left"
             
     else:
+        steering_angle=90
         direction = "Straight"  # No lane detected
     
     return steering_angle, direction

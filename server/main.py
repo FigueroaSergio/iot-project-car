@@ -25,26 +25,28 @@ app.mount("/static", StaticFiles(directory="./templates"), name="static")
 # Set the logging level (adjust as needed)
 
 
-pcs:set[RTCPeerConnection] = set()
+pc:RTCPeerConnection = None
 relay = MediaRelay()
 
 class VideoTransformTrack(VideoStreamTrack):
-    def __init__(self, track):
+    editor = None
+
+    def __init__(self, track,by):
         super().__init__()
         self.track = track
-        self.editor = None
+        self.by = by
 
     async def recv(self):
         frame = await self.track.recv()
         img = frame.to_ndarray(format="bgr24")
         try:
-            if self.editor is None:
-                self.editor = Editor(img)
+            if VideoTransformTrack.editor is None:
+                VideoTransformTrack.editor = Editor(img)
             
-            processed_img = await asyncio.get_event_loop().run_in_executor(None, self.editor.process, img)
-            
+            processed_img = await asyncio.get_event_loop().run_in_executor(None, VideoTransformTrack.editor.process, img)
+            angle = VideoTransformTrack.editor.curr_steering_angle
             # Display the processed image using OpenCV
-            cv2.imshow('view-1', processed_img)
+            cv2.imshow(f'view-{self.by}', processed_img)
             cv2.waitKey(1)  # Allow OpenCV to process events
             pass
         except Exception as e:
@@ -78,18 +80,12 @@ async def watcher(id):
 
 @sio.on('offer')
 async def offer(id, data):
-    print('Received offer event',id, data)
+    print('Received offer event',id)
     if(data['to']=='server'):
         await stream(id, data)
         return
     await sio.emit('offer', data)
     return
-
-# @sio.event
-# def connect():
-#     print('connection')
-#     client_id = str(uuid4())  # Generar un ID único
-#     emit('assign_id', {'id': client_id})
 
 @sio.on('answer')
 async def answer(id,data):
@@ -110,11 +106,12 @@ async def on_candidate(id,candidate):
 
 async def stream(id,data):
     localDescription=data['offer']
-    global pcs
+    global pc
+    if(pc!=None):
+        del pc
     print('Received stream')
     offer = RTCSessionDescription(sdp=localDescription['sdp'], type=localDescription['type'])
     pc = RTCPeerConnection()
-    pcs.add(pc)
     @pc.on("icecandidate")
     def on_icecandidate(event):
         if event.candidate:
@@ -123,7 +120,7 @@ async def stream(id,data):
     def on_track(track):
         print('track', track.kind)
         if track.kind == "video":
-            pc.addTrack(VideoTransformTrack(track))
+            pc.addTrack(VideoTransformTrack(track,id))
     print("Setting remote description...")
     await pc.setRemoteDescription(offer)
     print("Remote description set.")
@@ -150,50 +147,3 @@ if __name__ == '__main__':
                 ssl_keyfile="./key.pem",
                 ssl_certfile="./cert.pem",
                 )
-
-# @socketio.on('stream')
-# def stream(localDescription):
-#     app.logger.debug(f"Received data from client: {localDescription}")
-
-# async def stream(localDescrition):
-#     # print(localDescrition)
-#     app.logger.debug(f"Received data from client: {localDescrition}")
-#     # ... your processing code ...
-#     async def process_stream(localDescrition):
-#         global pcs
-#         print('Recived stream')  
-#         emit('answer','answer',broadcast=True)
-#         # print(localDescrition)  
-#         offer = RTCSessionDescription(sdp=localDescrition['sdp'], type=localDescrition['type'])
-#         pc = RTCPeerConnection()
-#         pcs.add(pc)
-
-#         @pc.on("icecandidate")
-#         def on_icecandidate(event):
-#             if event.candidate:
-#                 socketio.emit('candidate', {'candidate': event.candidate})
-
-#         @pc.on("track")
-#         def on_track(track):
-#             print('track',track.kind)
-#             if track.kind == "video":
-#                 pc.addTrack(VideoProcessorTrack(track))
-
-    
-#         await pc.setRemoteDescription(offer)
-#         answer = await pc.createAnswer()
-#         if(not answer):
-#             print('no answer')
-#             return
-#         await pc.setLocalDescription(answer)
-#         return answer
-   
-#     try:
-#         response = await process_stream(localDescrition)
-#         print('answering')
-#         emit('answer',response,broadcast=True)    
-#     except Exception as e:
-#         print(f"Error processing data: {e}")
-#         emit('my_error', {'message': 'An error occurred during processing.'})
-
-
