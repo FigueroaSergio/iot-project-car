@@ -212,3 +212,22 @@ class Room {
   }
   handlerUpdate(...params) {}
 }
+const randomMinMax = (min, max) => Math.floor(Math.random() * max + min);
+class Sensor {
+  constructor(max = 300, levels = 6) {
+    this.max = max;
+    this.levels = levels;
+  }
+  update(distance) {
+    let lines = distance / (this.max / this.levels);
+    for (let i = 0; i <= this.levels; i++) {
+      let line = document.getElementById(`d-${i}`);
+      if (!line) continue;
+      if (i <= lines) {
+        line.style.stroke = "#dc3545";
+      } else {
+        line.style.stroke = "#0000ff00";
+      }
+    }
+  }
+}

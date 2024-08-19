@@ -31,6 +31,11 @@
     color: white;
 }
 
+#map {
+    height: 180px;
+    width: 180px;
+    border-radius: 18px;
+}
 
 @media only screen and (max-width:1200px) {
     #viewer {
