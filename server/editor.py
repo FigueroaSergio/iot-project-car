@@ -13,7 +13,7 @@ from steering_control import calculate_steering_angle  # Import your steering co
 
 
 class Editor:
-    def __init__(self, image, opts={}):
+    def __init__(self, image,opts={}, display=False):
         self.img = image
         height,width = self.img.shape[:2]
 
@@ -50,10 +50,16 @@ class Editor:
         self.top_right = [self.init['Point-2-x'], self.init['Point-2-y']]
         self.bottom_right = [self.init['Point-3-x'], self.init['Point-3-y']]
         self.points = [self.bottom_left, self.top_left, self.top_right, self.bottom_right]
-        cv2.namedWindow('Track')
+       
         self.loading = True
-        self.createTrackbars(self.img)
-        self.createTrackbars_colors()
+        self.__display=display
+        if(display):
+            print("Init editor UI")
+            cv2.namedWindow('Track')
+            self.createTrackbars(self.img)
+            self.createTrackbars_colors()
+        else:
+             print("No UI")
         self.loading = False
         self.render(None)
     
@@ -62,7 +68,7 @@ class Editor:
         for i, point in enumerate(self.points):
             cv2.createTrackbar(f'Point-{i}-x', 'Track', int(point[0]), height, self.render)
             cv2.createTrackbar(f'Point-{i}-y', 'Track', int(point[1]), width, self.render)
-        cv2.createTrackbar(f'Step', 'Track', self.init['step'], 5, self.render)
+        cv2.createTrackbar(f'step', 'Track', self.init['step'], 5, self.render)
         cv2.createTrackbar(f'min-line', 'Track', self.init['min-line'], 500, self.render)
         cv2.createTrackbar(f'threshold', 'Track', self.init['threshold'], 500, self.render)
 
@@ -74,7 +80,11 @@ class Editor:
         cv2.createTrackbar(f'c-upper-x', 'Track', self.init['c-upper-x'], 255, self.render)
         cv2.createTrackbar(f'c-upper-y', 'Track', self.init['c-upper-y'], 255, self.render)
         cv2.createTrackbar(f'c-upper-z', 'Track', self.init['c-upper-z'], 255, self.render)
-
+    def getValue(self, prop):
+        if not self.__display:
+            return self.init[prop]
+        return cv2.getTrackbarPos(prop, 'Track')
+    
     ### USATI PER Step 1-4
     def region_selection(self, image):
         mask = np.zeros_like(image)
@@ -89,8 +99,8 @@ class Editor:
         return masked_image
     
     def hough_transform(self, image):
-        min_line = cv2.getTrackbarPos(f'min-line', 'Track')
-        thresh = cv2.getTrackbarPos(f'threshold', 'Track')
+        min_line = self.getValue(f'min-line')
+        thresh = self.getValue(f'threshold')
         return cv2.HoughLinesP(image, 1, np.pi/180, threshold=thresh, minLineLength=min_line, maxLineGap=50)
         
     def make_points(self, frame, line):
@@ -270,22 +280,22 @@ class Editor:
 
     def process(self, img):
         for i in range(4):
-            x=cv2.getTrackbarPos(f'Point-{i}-x','Track')
-            y=cv2.getTrackbarPos(f'Point-{i}-y','Track')
+            x=self.getValue(f'Point-{i}-x')
+            y=self.getValue(f'Point-{i}-y')
             self.points[i]=[x,y]
             circle = cv2.circle(img,[x,y],5,(0,255,0),cv2.FILLED)
-        step = cv2.getTrackbarPos(f'Step','Track')
+        step = self.getValue(f'step')
         try:
             hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
             lower_color=np.array([
-                cv2.getTrackbarPos(f'c-lower-x','Track'),
-                cv2.getTrackbarPos(f'c-lower-y','Track'),
-                cv2.getTrackbarPos(f'c-lower-z','Track')
+                self.getValue(f'c-lower-x'),
+                self.getValue(f'c-lower-y'),
+                self.getValue(f'c-lower-z')
                 ])
             upper_color=np.array([ 
-                cv2.getTrackbarPos(f'c-upper-x','Track'),
-                cv2.getTrackbarPos(f'c-upper-y','Track'),
-                cv2.getTrackbarPos(f'c-upper-z','Track')
+                self.getValue(f'c-upper-x'),
+                self.getValue(f'c-upper-y'),
+                self.getValue(f'c-upper-z')
                 ])
             # print(lower_color,upper_color)
             mask = cv2.inRange(hsv, lower_color, upper_color)

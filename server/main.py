@@ -40,13 +40,17 @@ class VideoTransformTrack(VideoStreamTrack):
         frame = await self.track.recv()
         img = frame.to_ndarray(format="bgr24")
         try:
+            display=True
             if VideoTransformTrack.editor is None:
-                VideoTransformTrack.editor = Editor(img)
+                VideoTransformTrack.editor = Editor(img,{
+                    'step':5
+                },display)
             
             processed_img = await asyncio.get_event_loop().run_in_executor(None, VideoTransformTrack.editor.process, img)
             angle = VideoTransformTrack.editor.curr_steering_angle
             # Display the processed image using OpenCV
-            cv2.imshow(f'view-{self.by}', processed_img)
+            if(display):    
+                cv2.imshow(f'view-{self.by}', processed_img)
             cv2.waitKey(1)  # Allow OpenCV to process events
             pass
         except Exception as e:

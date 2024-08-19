@@ -31,18 +31,16 @@ def calculate_steering_angle(frame, lane_center):
     I valori -9 e 9 li ho messi manualmente ma potrebbero essere da cambiare(ingrandire) o cambiare metodo di decisione angolo in base a prove
     '''
     height, width = frame.shape[:2]
-    
+    steering_angle=90
+    direction='Straight'
     if lane_center is not None:
         deviation = lane_center - (width / 2)
         steering_angle = np.arctan(deviation / height) * (180 / np.pi)
         
-        if steering_angle > 9 :
+        if steering_angle >= 9 :
             direction = "Right"
         if steering_angle < -9 :
             direction = "Left"
             
-    else:
-        steering_angle=90
-        direction = "Straight"  # No lane detected
     
     return steering_angle, direction
