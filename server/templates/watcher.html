@@ -781,7 +781,7 @@
     var elem = document.documentElement;
     socket.emit("watcher");
 
-    /* Get geolocation */
+    /* Get geolocation 
     function getLocation() {
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition((p) => {
@@ -801,6 +801,7 @@
       }
     }
     getLocation();
+    */
     /* View in fullscreen */
     function openFullscreen() {
       if (elem.requestFullscreen) {
@@ -882,6 +883,30 @@
     });
     socket.on("candidate", async ({ to, from, candidate }) => {
       room.onCandidate(to, from, candidate);
+    });
+    let map = L.map("map").setView([0, 0], 13);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+    }).addTo(map);
+
+    let marker;
+
+    // Handle location updates from the server
+    socket.on("locationUpdate", (data) => {
+      const { id, latitude, longitude } = data;
+      if (latitude === null || longitude === null) {
+        if (marker) {
+          map.removeLayer(marker);
+          marker = null;
+        }
+      } else {
+        if (marker) {
+          marker.setLatLng([latitude, longitude]);
+        } else {
+          marker = L.marker([latitude, longitude]).addTo(map);
+        }
+        map.setView([latitude, longitude], 13);
+      }
     });
   </script>
 </html>

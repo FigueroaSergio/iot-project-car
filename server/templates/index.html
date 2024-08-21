@@ -134,5 +134,23 @@
       .catch((err) => {
         console.error("Error accessing the camera: ", err);
       });
+    // Function to send location updates
+    function sendLocationUpdate() {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          // Emit location data to the server
+          socket.emit("location", { latitude, longitude });
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          // Optionally handle errors or send fallback data
+          socket.emit("location", { latitude: null, longitude: null });
+        }
+      );
+    }
+
+    // Call sendLocationUpdate periodically (e.g., every 5 seconds)
+    setInterval(sendLocationUpdate, 5000);
   </script>
 </html>

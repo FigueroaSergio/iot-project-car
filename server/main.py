@@ -16,6 +16,8 @@ import uvicorn
 from image import frame_processor
 from editor import Editor
 
+from db import create_db_and_table, insert_coordinates
+
 app = FastAPI(reload=True)
 
 sio =socketio.AsyncServer(async_mode='asgi',cors_allowed_origins='*')
@@ -23,6 +25,7 @@ app.mount('/socket.io', socketio.ASGIApp(sio))
 app.mount("/static", StaticFiles(directory="./templates"), name="static")
 
 # Set the logging level (adjust as needed)
+create_db_and_table()
 
 
 pc:RTCPeerConnection = None
@@ -80,8 +83,18 @@ async def broadcaster(id):
 async def watcher(id):
     print('Received watcher event', id)
     await sio.emit('watcher', id)
-    
 
+locations = {}
+@sio.on('location')
+async def location(sid, data):
+    print(f"Location data received from {sid}: {data}")
+    locations[sid] = data
+    latitude = data.get('latitude')
+    longitude = data.get('longitude')
+    if latitude is not None and longitude is not None:
+        insert_coordinates(latitude, longitude)
+    await sio.emit('locationUpdate', {'id': sid, **data})
+    
 @sio.on('offer')
 async def offer(id, data):
     print('Received offer event',id)
@@ -147,7 +160,7 @@ async def stream(id,data):
 
 if __name__ == '__main__':
     
-    uvicorn.run(app, host='0.0.0.0',port=5000,
+    uvicorn.run(app, host='0.0.0.0',port=5001,
                 ssl_keyfile="./key.pem",
                 ssl_certfile="./cert.pem",
                 )
