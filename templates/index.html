@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebRTC Video Streaming</title>
+    <link rel="stylesheet" href="style.css" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
+  </head>
+  <body class="bg-dark-subtle" data-bs-theme="dark">
+    <div class="row justify-content-center p-4">
+      <div class="col-12 col-md-8 col-lg-6 pt-1">
+        <div class="card">
+          <div class="d-flex card-header align-items-center">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              fill="currentColor"
+              class="bi bi-camera-reels-fill"
+              viewBox="0 0 16 16"
+            >
+              <path d="M6 3a3 3 0 1 1-6 0 3 3 0 0 1 6 0" />
+              <path d="M9 6a3 3 0 1 1 0-6 3 3 0 0 1 0 6" />
+              <path
+                d="M9 6h.5a2 2 0 0 1 1.983 1.738l3.11-1.382A1 1 0 0 1 16 7.269v7.462a1 1 0 0 1-1.406.913l-3.111-1.382A2 2 0 0 1 9.5 16H2a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"
+              />
+            </svg>
+            <div>
+              <div class="ps-2 fs-5 fw-bold">Stream</div>
+            </div>
+          </div>
+          <div class="card-body">
+            <video
+              id="localVideo"
+              class="video img-fluid rounded"
+              muted
+              autoplay
+              alt="stream video"
+            ></video>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-md-4 col-lg-3 pt-1" id="container"></div>
+    </div>
+    <div id="logger"></div>
+  </body>
+
+  <script
+    src="https://cdn.socket.io/4.7.5/socket.io.min.js"
+    integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO"
+    crossorigin="anonymous"
+  ></script>
+  <script src="index.js"></script>
+  <script src="CardReload.js"></script>
+  <script>
+    const localVideo = document.getElementById("localVideo");
+    const remoteVideo = document.getElementById("remoteVideo");
+    const loggerC = document.getElementById("logger");
+    const container = document.getElementById("container");
+    const logger = {
+      log: (...text) => {
+        console.log(...text);
+        loggerC.innerText += `\n ${text}`;
+      },
+    };
+
+    const room = new Room("Video-streaming");
+    room.onUpdate(() => {
+      container.innerHTML = "";
+
+      room.connections.forEach((connection, i) => {
+        let state = connection.peerConnection.connectionState;
+        let content = CardConnection({
+          user: connection.to,
+          status: state,
+          onReload: () => {
+            console.log("Reload", connection.to);
+            room.join(new User(connection.to));
+            room.handlerUpdate();
+          },
+          onDelete: () => {
+            console.log("Delete");
+            room.connections.splice(i, 1);
+            room.handlerUpdate();
+          },
+        });
+
+        if (!content) {
+          return;
+        }
+        container.appendChild(content);
+      });
+    });
+    room.setLogger(logger);
+    socket.on("connect", (id) => {
+      room.setId(socket.id);
+    });
+
+    navigator.mediaDevices
+      .getUserMedia({
+        video: {
+          facingMode: "environment",
+          frameRate: { ideal: 10, max: 15 },
+          width: { ideal: 320 },
+          height: { ideal: 240 },
+        },
+      })
+      .then((stream) => {
+        localVideo.srcObject = stream;
+        localStream = stream;
+        localVideo.play();
+        localVideo.onloadedmetadata = async () => {
+          room.setStream(stream);
+          room.join(new User("server"));
+        };
+
+        socket.on("watcher", async (id) => {
+          room.join(new User(id));
+        });
+        socket.on("answer", async (data) => {
+          let { to, from, answer } = data;
+          room.answer(to, from, answer);
+        });
+        socket.on("candidate", async ({ to, from, candidate }) => {
+          room.onCandidate(to, from, candidate);
+        });
+      })
+      .catch((err) => {
+        console.error("Error accessing the camera: ", err);
+      });
+      // Function to send location updates
+
+      function sendLocationUpdate() {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          // Emit location data to the server
+          socket.emit("location", { latitude, longitude });
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          // Optionally handle errors or send fallback data
+          socket.emit("location", { latitude: null, longitude: null });
+        }
+      );
+    }
+
+    // Call sendLocationUpdate periodically (e.g., every 5 seconds)
+    setInterval(sendLocationUpdate, 5000);
+  </script>
+</html>

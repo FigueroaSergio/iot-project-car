@@ -4,12 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WebRTC Video Streaming</title>
+    <style>
+      
+    </style>
   </head>
   <body>
     <h1>WebRTC Video Streaming</h1>
-    <canvas id="canvas"></canvas>
+    <h3 >Connection <span id="stato">-</span></h3>
     <video id="localVideo" width="640" height="480" muted></video>
-    <video id="remoteVideo" width="640" height="480" autoplay></video>
+
+   
 
     <script
       src="https://cdn.socket.io/4.7.5/socket.io.min.js"
@@ -18,11 +22,13 @@
     ></script>
     <script>
       const localVideo = document.getElementById("localVideo");
-      const remoteVideo = document.getElementById("remoteVideo");
+      const statoText = document.getElementById("stato");
       // const socket = io.connect("https://j9drrtjb-5000.euw.devtunnels.ms/");
       // const socket = io("http://127.0.0.1:5000/");
       const socket = io("https://" + window.location.host, { secure: false });
+      
 
+      
       const peerConnections = [];
       let localStream;
       const config = {
@@ -112,10 +118,13 @@
             peerConnection.addEventListener(
               "connectionstatechange",
               (event) => {
+                let stato=  `${peerConnection.connectionState}`
+                
                 console.log(
-                  `connection: server`,
-                  peerConnection.connectionState
+                 stato
                 );
+                statoText.textContent=stato
+
               }
             );
 
@@ -127,7 +136,7 @@
                 socket.emit("candidate", event.candidate);
               }
             };
-
+            
             const offer = await peerConnection.createOffer();
             await peerConnection.setLocalDescription(offer);
             socket.emit("stream", offer);
@@ -212,5 +221,96 @@
       //   socket.disconnect();
       // };
     </script>
+    <div class="container">
+      <button onclick="goForward()">Go Forward</button>
+      <button onclick="goBackward()">Go Backward</button>
+      <button onclick="stopCar()">Stop</button>
+      <br>
+      <input type="number" id="angleInput" placeholder="Angle">
+      <button onclick="setAngle()">Set Angle</button>
+    </div>
+
+    <script>
+
+        function goForward() {
+            console.log('Sending go_forward event');
+            socket.emit('go_forward');
+        }
+
+        function goBackward() {
+            console.log('Sending go_backward event');
+            socket.emit('go_backward');
+        }
+
+        function stopCar() {
+            console.log('Sending stop event');
+            socket.emit('stop');
+        }
+
+        function setAngle() {
+            var angle = document.getElementById('angleInput').value;
+            console.log('Sending set_angle event with angle:', angle);
+            socket.emit('gira', Number(angle));
+        }
+    </script>
+      <style>
+        
+        .container {
+            text-align: center;
+            background: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            margin: 10px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            transition: background 0.3s, transform 0.2s;
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+        .go-forward {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .go-forward:hover {
+            background-color: #45a049;
+        }
+        .go-backward {
+            background-color: #f44336;
+            color: white;
+        }
+        .go-backward:hover {
+            background-color: #e53935;
+        }
+        .stop {
+            background-color: #ff9800;
+            color: white;
+        }
+        .stop:hover {
+            background-color: #fb8c00;
+        }
+        .set-angle {
+            background-color: #2196F3;
+            color: white;
+        }
+        .set-angle:hover {
+            background-color: #1e88e5;
+        }
+        input {
+            padding: 10px;
+            font-size: 16px;
+            margin: 10px;
+            width: 60px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+        }
+    </style>
   </body>
 </html>

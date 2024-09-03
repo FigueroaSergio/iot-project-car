@@ -70,7 +70,7 @@ class CarRasp(Car):
 
     def goForward(self):
         print('Go Forward')
-        for i in range(0, 128):
+        for i in range(0, 256):
             self.motor_pwm.ChangeDutyCycle(i / 2.55)
             GPIO.output(self.motor_pin1, GPIO.HIGH)
             GPIO.output(self.motor_pin2, GPIO.LOW)
@@ -78,7 +78,7 @@ class CarRasp(Car):
 
     def goBackward(self):
         print('Go backward')
-        for i in range(0, 128):
+        for i in range(0, 256):
             self.motor_pwm.ChangeDutyCycle(i / 2.55)
             GPIO.output(self.motor_pin2, GPIO.HIGH)
             GPIO.output(self.motor_pin1, GPIO.LOW)
@@ -92,6 +92,10 @@ class CarRasp(Car):
         time.sleep(0.01)
         
     def setAngle(self, angle:float):
+        if angle>150:
+            angle=150
+        if angle<40:
+            angle=40
         percent = self._angle_to_percent(angle)
         print(f'Set angle {angle} = {percent} percent')
 
@@ -107,7 +111,7 @@ class CarRasp(Car):
 
 class DummyController(Controller):
     def start(self):
-        while True:
+        while False:
             measures= self.car.getStatus()
             print(measures)
             near = False
@@ -134,29 +138,29 @@ class DummyController(Controller):
 def main():
     
     try:
-        s1 = SensorRasp(trigger=2,echo=3, position='left')
-        s2 = SensorRasp(trigger=5,echo=6, position='right')
-        print(s2.getMeasure())
+        s1 = SensorRasp(trigger=27,echo=22, position='left')
+        #s2 = SensorRasp(trigger=5,echo=6, position='right')
+        #print(s2.getMeasure())
         print(s1.getMeasure())
         # s1 = SensorRasp(trigger=2,echo=3, position='Front')
         sensors = SensorManager()
         sensors.subscribe(s1)
-        sensors.subscribe(s2)
+        # sensors.subscribe(s2)
         car = CarRasp(
               velocity=2, 
               acceleration=10,
               sensors=sensors,
-              motor_pin1=9,
-              motor_pin2=10,
-              attiva_pin=6,
+              motor_pin1=14,
+              motor_pin2=15,
+              attiva_pin=12,
               servo_pin=13)
         car.goBackward()
-        car.goForward()
-        car.stop()
-        car.setAngle(0)
+        #car.goForward()
+        #car.stop()
+        #car.setAngle(0)
         car.setAngle(90)
-        car.setAngle(180)
-        car.setAngle(0)
+        #car.setAngle(180)
+        #car.setAngle(0)
         status=car.getStatus()
         print(status)
 

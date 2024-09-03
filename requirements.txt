@@ -6,3 +6,5 @@ uvicorn
 moviepy
 opencv-python
 pandas
+python-socketio
+aiortc
