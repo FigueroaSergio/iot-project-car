@@ -36,6 +36,36 @@
     width: 180px;
     border-radius: 18px;
 }
+#toggleAutoDrive {
+    background-color: #4CAF50;
+    border: none;
+    color: white;
+    padding: 15px 32px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 15px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background-color 0.3s, transform 0.2s;
+    margin-bottom: 200px;
+    pointer-events: auto; 
+    z-index: 1000; 
+
+
+  }
+  #toggleAutoDrive.active {
+    background-color: #45a049; 
+  }
+  #toggleAutoDrive:hover {
+    background-color: #3e8e41; 
+    transform: scale(1.05); 
+  }
+  #toggleAutoDrive:active {
+    background-color: #2e6a34; 
+    transform: scale(0.95); 
+  }
 
 @media only screen and (max-width:1200px) {
     #viewer {

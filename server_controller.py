@@ -35,7 +35,7 @@ create_db_and_table()
 
 pc:RTCPeerConnection = None
 relay = MediaRelay()
-
+drivemode = False
 class VideoTransformTrack(VideoStreamTrack):
     editor = None
 
@@ -54,11 +54,13 @@ class VideoTransformTrack(VideoStreamTrack):
                     'step':5
                 }, display)
             
-            
             processed_img = await asyncio.get_event_loop().run_in_executor(None, VideoTransformTrack.editor.process, img)
-            angle = VideoTransformTrack.editor.curr_steering_angle
-            # car.setAngle(angle)
 
+            if drivemode:
+                
+                angle = 95+ VideoTransformTrack.editor.curr_steering_angle
+                sio.emit('gira', {'id' : id, 'angle' : angle})
+                #car.setAngle(angle)
 
             # Display the processed image using OpenCV
             if(display):    
@@ -76,13 +78,34 @@ def index():
         html_content = f.read()
     return HTMLResponse(content=html_content)
 
+
 def verifyDistance():
     while True:
         misura= car.getStatus()
-        if(misura[len(misura)-1].distance<50):      #15
+        if(misura[len(misura)-1].distance<30):      #15
             car.stop()
+        #sio.emit('distance_update', {'distance': distance})
+        sio.emit('distance_update', {'distance': misura})
         time.sleep(0.5)
+'''      
+def verifyDistance():
+    while True:
+        distance = s1.getStatus()
+        print(f"Distance: {distance} cm")
+        sio.emit('distance_update', {'distance': distance})
 
+        time.sleep(1)  # Adjust the sleep time as needed
+'''
+
+
+
+@sio.on('cambioguida')
+async def cambioguida(sid, data):
+    global drivemode
+    drivemode = data.get('autoDrive', False)
+    mode = "autonoma" if drivemode else "manuale"
+    print(f"Modalità di guida cambiata: {mode}")
+    
 @sio.on('broadcaster')
 async def broadcaster(id):
     
@@ -109,6 +132,12 @@ def go_backward(id):
 def stop(id):
     car.stop()
     print('Car has stopped')
+    
+@sio.on('distance_update')      #serve???
+def distance_update(id,misura):
+    #car.setAngle(angle)
+    #print('Angolo impostato', angle)
+    print("ciao")
     
 locations = {}
 @sio.on('location')

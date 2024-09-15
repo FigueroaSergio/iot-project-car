@@ -21,6 +21,7 @@
   </head>
 
   <body class="bg-dark-subtle" data-bs-theme="dark">
+    <button class="position-absolute bottom-0 end-0 p-3 mt-5" id="toggleAutoDrive">Attiva Guida Autonoma</button>
     <div class="position-relative">
       <video
         id="viewer"
@@ -774,6 +775,8 @@
   <script src="CardReload.js"></script>
 
   <script>
+    let autoDrive = false;
+
     const container = document.getElementById("container-video");
     const btn = document.getElementById("btn-screen");
     const viewer = document.getElementById("viewer");
@@ -818,13 +821,13 @@
     }
     btn.onclick = openFullscreen;
     const sensor = new Sensor();
-    setInterval(() => {
+    /*setInterval(() => {
       let v = randomMinMax(0, 300);
       console.log("distance: ", v);
 
       sensor.update(v);
-    }, 500);
-
+    }, 500);*/
+    
     /* Close fullscreen */
     function closeFullscreen() {
       if (document.exitFullscreen) {
@@ -885,6 +888,13 @@
     socket.on("candidate", async ({ to, from, candidate }) => {
       room.onCandidate(to, from, candidate);
     });
+    socket.on("distance_update", (data) => {
+      console.log(data)
+      let v = data[0].distance;
+      console.log('Distance received:', v);
+
+      sensor.update(v);
+    }, 500);
 
     const btn_up=document.getElementById('btn-up')
     const btn_left=document.getElementById('btn-left')
@@ -945,5 +955,22 @@
         map.setView([latitude, longitude], 13);
       }
     });
+    const toggleAutoDriveButton = document.getElementById("toggleAutoDrive");
+      toggleAutoDriveButton.addEventListener("click", () => {
+        autoDrive = !autoDrive; // Inverti lo stato della guida autonoma
+        const mode = autoDrive ? "Guida autonoma abilitata" : "Guida manuale abilitata";
+        console.log(mode);
+        socket.emit("cambioguida", { autoDrive }); // Invia il cambio di modalità al server
+        if(autoDrive){
+          socket.emit('gira');
+          
+          socket.emit('go_forward');
+          //sergio
+        }
+        // Cambia il testo del bottone in base alla modalità corrente
+        toggleAutoDriveButton.textContent = autoDrive
+          ? "Disattiva Guida Autonoma"
+          : "Attiva Guida Autonoma"; });
+
   </script>
 </html>

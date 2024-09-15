@@ -1,4 +1,7 @@
 import RPi.GPIO as GPIO
+#import pigpio
+from gpiozero.pins.pigpio import PiGPIOFactory  #new
+from gpiozero import AngularServo               #new
 import time
 from typing import Any
 
@@ -9,7 +12,7 @@ from models.car import Car
 from models.sensorManager import SensorManager
 from models.controller import Controller
 
-
+# pi = pigpio.pi("pi",8889)
 
 
 class SensorRasp(Sensor):
@@ -65,8 +68,11 @@ class CarRasp(Car):
         # CONFIG servo
         print('Init Servo...')
         GPIO.setup(self.servo_pin, GPIO.OUT)
-        self.servo = GPIO.PWM(self.servo_pin, 50)  # Imposta la frequenza del PWM a 50Hz
-        self.servo.start(self._angle_to_percent(self.angle))
+        #self.servo = GPIO.PWM(self.servo_pin, 50)  # Imposta la frequenza del PWM a 50Hz
+        #self.servo.start(self._angle_to_percent(self.angle))
+        factory = PiGPIOFactory()       #obbligatorio per ridurre i jitter
+        self.servo = AngularServo(self.servo_pin, min_angle=50, max_angle=150, initial_angle=110, pin_factory=factory)
+        # la guida seguita diceva di impostare min_pulse_width=0.0005, max_pulse_width=0.0024, ma dipende dal servo
 
     def goForward(self):
         print('Go Forward')
@@ -92,15 +98,16 @@ class CarRasp(Car):
         time.sleep(0.01)
         
     def setAngle(self, angle:float):
-        if angle>150:
-            angle=150
-        if angle<40:
-            angle=40
+        if angle>150:       #150
+            angle=150       #150
+        if angle<50:        #40
+            angle=50        #40
         percent = self._angle_to_percent(angle)
         print(f'Set angle {angle} = {percent} percent')
 
         GPIO.output(self.servo_pin, GPIO.HIGH)
-        self.servo.ChangeDutyCycle(percent)
+        #self.servo.ChangeDutyCycle(percent)
+        self.servo.angle=angle
         GPIO.output(self.servo_pin, GPIO.LOW)
         time.sleep(0.01)
 
