@@ -1,7 +1,7 @@
 import RPi.GPIO as GPIO
 #import pigpio
-from gpiozero.pins.pigpio import PiGPIOFactory  #new
-from gpiozero import AngularServo               #new
+from gpiozero.pins.pigpio import PiGPIOFactory
+from gpiozero import AngularServo
 import time
 from typing import Any
 
@@ -102,8 +102,9 @@ class CarRasp(Car):
             angle=150       #150
         if angle<50:        #40
             angle=50        #40
-        percent = self._angle_to_percent(angle)
-        print(f'Set angle {angle} = {percent} percent')
+        #percent = self._angle_to_percent(angle)
+        #print(f'Set angle {angle} = {percent} percent')
+        print(f'Set angle {angle}')
 
         GPIO.output(self.servo_pin, GPIO.HIGH)
         #self.servo.ChangeDutyCycle(percent)

@@ -890,11 +890,12 @@
     });
     socket.on("distance_update", (data) => {
       console.log(data)
-      let v = data[0].distance;
+      //let v = data[0].distance;
+      let v = data.distance[0].distance;
       console.log('Distance received:', v);
 
       sensor.update(v);
-    }, 500);
+    }); //, 500
 
     const btn_up=document.getElementById('btn-up')
     const btn_left=document.getElementById('btn-left')
@@ -961,12 +962,10 @@
         const mode = autoDrive ? "Guida autonoma abilitata" : "Guida manuale abilitata";
         console.log(mode);
         socket.emit("cambioguida", { autoDrive }); // Invia il cambio di modalità al server
-        if(autoDrive){
-          socket.emit('gira');
-          
-          socket.emit('go_forward');
-          //sergio
-        }
+        /*if(autoDrive){
+          //socket.emit('gira');
+          //socket.emit('go_forward');
+        }*/
         // Cambia il testo del bottone in base alla modalità corrente
         toggleAutoDriveButton.textContent = autoDrive
           ? "Disattiva Guida Autonoma"

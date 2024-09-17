@@ -38,6 +38,7 @@ relay = MediaRelay()
 drivemode = False
 class VideoTransformTrack(VideoStreamTrack):
     editor = None
+    counterPaolo=0
 
     def __init__(self, track,by):
         super().__init__()
@@ -48,19 +49,23 @@ class VideoTransformTrack(VideoStreamTrack):
         frame = await self.track.recv()
         img = frame.to_ndarray(format="bgr24")
         try:
-            display=True
+            display=False   #True
             if VideoTransformTrack.editor is None:
                 VideoTransformTrack.editor = Editor(img,{
                     'step':5
                 }, display)
             
+            VideoTransformTrack.counterPaolo+=1
+            if VideoTransformTrack.counterPaolo%15!=0: return    #solo se multiplo di 5 processa l'immagine (riduzione overhead)
+            VideoTransformTrack.counterPaolo=0
+            
             processed_img = await asyncio.get_event_loop().run_in_executor(None, VideoTransformTrack.editor.process, img)
 
             if drivemode:
-                
-                angle = 95+ VideoTransformTrack.editor.curr_steering_angle
-                sio.emit('gira', {'id' : id, 'angle' : angle})
-                #car.setAngle(angle)
+                angle = 90 + VideoTransformTrack.editor.curr_steering_angle
+                #sio.emit('gira', {'id' : id, 'angle' : angle})
+                print("STO PER SETTARE L'ANGOLO!!!")
+                car.setAngle(angle)
 
             # Display the processed image using OpenCV
             if(display):    
@@ -81,11 +86,13 @@ def index():
 
 def verifyDistance():
     while True:
-        misura= car.getStatus()
+        misura = car.getStatus()
         if(misura[len(misura)-1].distance<30):      #15
             car.stop()
+        print(f"STO LEGGENDO MISURA: {misura}")
         #sio.emit('distance_update', {'distance': distance})
-        sio.emit('distance_update', {'distance': misura})
+        #sio.emit('distance_update', {'distance': misura})
+        distance_update(0, misura)
         time.sleep(0.5)
 '''      
 def verifyDistance():
@@ -133,22 +140,24 @@ def stop(id):
     car.stop()
     print('Car has stopped')
     
-@sio.on('distance_update')      #serve???
+@sio.on('distance_update')
 def distance_update(id,misura):
-    #car.setAngle(angle)
-    #print('Angolo impostato', angle)
+    sio.emit('distance_update', {'distance': misura})
     print("ciao")
     
 locations = {}
 @sio.on('location')
 async def location(sid, data):
-    print(f"Location data received from {sid}: {data}")
-    locations[sid] = data
-    latitude = data.get('latitude')
-    longitude = data.get('longitude')
-    if latitude is not None and longitude is not None:
-        insert_coordinates(latitude, longitude)
-    await sio.emit('locationUpdate', {'id': sid, **data})
+    try:
+        print(f"Location data received from {sid}: {data}")
+        locations[sid] = data
+        latitude = data.get('latitude')
+        longitude = data.get('longitude')
+        if latitude is not None and longitude is not None:
+            insert_coordinates(latitude, longitude)
+        await sio.emit('locationUpdate', {'id': sid, **data})
+    except:
+        print("ERRORE LOCATION")
 
 @sio.on('watcher')
 async def watcher(id):
