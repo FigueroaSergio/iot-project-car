@@ -38,7 +38,6 @@ relay = MediaRelay()
 drivemode = False
 class VideoTransformTrack(VideoStreamTrack):
     editor = None
-    counterPaolo=0
 
     def __init__(self, track,by):
         super().__init__()
@@ -49,22 +48,20 @@ class VideoTransformTrack(VideoStreamTrack):
         frame = await self.track.recv()
         img = frame.to_ndarray(format="bgr24")
         try:
-            display=False   #True
+            display=True
             if VideoTransformTrack.editor is None:
                 VideoTransformTrack.editor = Editor(img,{
                     'step':5
                 }, display)
             
-            VideoTransformTrack.counterPaolo+=1
-            if VideoTransformTrack.counterPaolo%15!=0: return    #solo se multiplo di 5 processa l'immagine (riduzione overhead)
             VideoTransformTrack.counterPaolo=0
             
             processed_img = await asyncio.get_event_loop().run_in_executor(None, VideoTransformTrack.editor.process, img)
 
             if drivemode:
-                angle = 90 + VideoTransformTrack.editor.curr_steering_angle
+                angle = VideoTransformTrack.editor.curr_steering_angle
                 #sio.emit('gira', {'id' : id, 'angle' : angle})
-                print("STO PER SETTARE L'ANGOLO!!!")
+                #print("STO PER SETTARE L'ANGOLO!!!")
                 car.setAngle(angle)
 
             # Display the processed image using OpenCV
@@ -84,27 +81,18 @@ def index():
     return HTMLResponse(content=html_content)
 
 
-def verifyDistance():
+async def verifyDistance():
     while True:
         misura = car.getStatus()
         if(misura[len(misura)-1].distance<30):      #15
             car.stop()
-        print(f"STO LEGGENDO MISURA: {misura}")
-        #sio.emit('distance_update', {'distance': distance})
-        #sio.emit('distance_update', {'distance': misura})
-        distance_update(0, misura)
-        time.sleep(0.5)
-'''      
-def verifyDistance():
-    while True:
-        distance = s1.getStatus()
-        print(f"Distance: {distance} cm")
-        sio.emit('distance_update', {'distance': distance})
+        #print(f"STO LEGGENDO MISURA:")
+        await sio.emit('distance_update', {'distance': misura[0].distance})
+        await asyncio.sleep(1)
 
-        time.sleep(1)  # Adjust the sleep time as needed
-'''
-
-
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(verifyDistance())
 
 @sio.on('cambioguida')
 async def cambioguida(sid, data):
@@ -254,21 +242,10 @@ if __name__ == '__main__':
               servo_pin=13)     # 33
     car.setAngle(90)
 
-    threads=[]
-    distance=Thread(target=verifyDistance)
-    distance.start()
-
-    threads.append(distance)
-
-    server = Thread(target=uvicorn.run,kwargs={
-                "app":app, 
-                "host":'0.0.0.0',
-                'port':5000,
-                'ssl_keyfile':"./key.pem",
-                'ssl_certfile':"./cert.pem",
-                })
-    server.start()
-    threads.append(server)
-
-    for t in threads:
-        t.join()
+    uvicorn.run(
+            app=app, 
+            host='0.0.0.0',
+            port=5000,
+            ssl_keyfile="./key.pem",
+            ssl_certfile="./cert.pem",
+        )

@@ -13,7 +13,7 @@ class Car(BaseModel):
     sensors: SensorManager
 
     def getStatus(self):
-        print('Ready sensors...')
+        #print('Ready sensors...')
         return self.sensors.getStatus()
     
     def goForward(self):

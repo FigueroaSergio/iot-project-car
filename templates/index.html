@@ -106,9 +106,9 @@
       .getUserMedia({
         video: {
           facingMode: "environment",
-          frameRate: { ideal: 10, max: 15 },
-          width: { ideal: 320 },
-          height: { ideal: 240 },
+          frameRate: { ideal: 3, max: 5 },  //ideal: 10, max: 15
+          width: { ideal: 160 },  //320
+          height: { ideal: 120 }, //240
         },
       })
       .then((stream) => {

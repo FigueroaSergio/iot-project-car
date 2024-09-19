@@ -1,6 +1,4 @@
-
-
-        
+     
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
@@ -342,10 +340,12 @@ class Editor:
                 if current_time - self.last_update_time >= self.update_interval:
                     # Calculate steering angle and direction
                     steering_angle, direction = calculate_steering_angle(img, lane_center)
-                    self.curr_steering_angle= steering_angle
+                    #self.curr_steering_angle = steering_angle
+                    self.curr_steering_angle = 90 + steering_angle*1
                     # Print steering angle and direction to the terminal
-                    print(f"Steering Angle: {steering_angle:.2f} degrees")
+                    #print(f"Steering Angle: {steering_angle:.2f} degrees")
                     print(f"Direction: {direction}")
+                    img_with_lane_area = self.display_heading_line(img_with_lane_area,self.curr_steering_angle)
 
                     # Update the last update time
                     self.last_update_time = current_time

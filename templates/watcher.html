@@ -890,11 +890,9 @@
     });
     socket.on("distance_update", (data) => {
       console.log(data)
-      //let v = data[0].distance;
-      let v = data.distance[0].distance;
-      console.log('Distance received:', v);
-
-      sensor.update(v);
+      //let v = data.distance[0].distance;
+      console.log('Distance received:', data.distance);
+      sensor.update(data.distance);
     }); //, 500
 
     const btn_up=document.getElementById('btn-up')
