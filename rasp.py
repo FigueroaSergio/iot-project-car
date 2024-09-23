@@ -1,5 +1,4 @@
 import RPi.GPIO as GPIO
-#import pigpio
 from gpiozero.pins.pigpio import PiGPIOFactory
 from gpiozero import AngularServo
 import time
@@ -11,8 +10,6 @@ from models.sensor import Sensor,Measure
 from models.car import Car
 from models.sensorManager import SensorManager
 from models.controller import Controller
-
-# pi = pigpio.pi("pi",8889)
 
 
 class SensorRasp(Sensor):

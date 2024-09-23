@@ -51,7 +51,7 @@ class VideoTransformTrack(VideoStreamTrack):
             display=True
             if VideoTransformTrack.editor is None:
                 VideoTransformTrack.editor = Editor(img,{
-                    'step':5
+                    'step':4
                 }, display)
             
             VideoTransformTrack.counterPaolo=0
