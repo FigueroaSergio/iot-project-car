@@ -51,7 +51,11 @@ class VideoTransformTrack(VideoStreamTrack):
             display=True
             if VideoTransformTrack.editor is None:
                 VideoTransformTrack.editor = Editor(img,{
-                    'step':4
+                    'step':4,
+                    'Point-1-y':40,
+                    'Point-2-y':40,
+                    'Point-0-y':95,
+                    'Point-3-y':95
                 }, display)
             
             VideoTransformTrack.counterPaolo=0

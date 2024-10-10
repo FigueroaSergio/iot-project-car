@@ -73,7 +73,7 @@ class CarRasp(Car):
 
     def goForward(self):
         print('Go Forward')
-        for i in range(0, 256):
+        for i in range(0, 254):
             self.motor_pwm.ChangeDutyCycle(i / 2.55)
             GPIO.output(self.motor_pin1, GPIO.HIGH)
             GPIO.output(self.motor_pin2, GPIO.LOW)

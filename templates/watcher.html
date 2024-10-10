@@ -921,6 +921,12 @@
 
         function setAngle(ang) {
             angle+=ang
+            if(angle>150) {
+              angle=150
+            }
+            if(angle<50){
+              angle =50
+            }
             console.log('Sending set_angle event with angle:', angle);
             socket.emit('gira', Number(angle));
         }
